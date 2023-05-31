@@ -4,11 +4,12 @@ mod lexer;
 use lexer::{CharacterBuffer, Lexer};
 
 fn main() {
-    let source = "funky fresh m n = m * n";
+    let source = "funky fresh m n = m * n;";
     let mut lexer = Lexer::new(source.chars().peekable());
     let mut buffer = CharacterBuffer::new();
 
     while *lexer.get_character() != '\0' {
+        println!("{:?}", buffer);
         println!(
             "{:?} - {:?}",
             lexer.get_character(),

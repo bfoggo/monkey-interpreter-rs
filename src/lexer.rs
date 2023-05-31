@@ -45,6 +45,7 @@ pub enum Token {
     GTEQ,
 }
 
+#[derive(Debug)]
 pub struct CharacterBuffer(Vec<char>);
 
 impl CharacterBuffer {
@@ -113,18 +114,14 @@ impl<'a> Lexer<'a> {
     }
     fn is_ending_character(character: char) -> bool {
         match character {
-            '\0' | '\n' | ' ' | '\t' | '+' | '-' | '*' | '/' | '=' | '<' | '>' => true,
+            '\0' | '\n' | ' ' | '\t' | '+' | '-' | '*' | '/' | '=' | '<' | '>' | ';' => true,
             _ => false,
         }
     }
-    pub fn get_token(&self, buffer: &mut CharacterBuffer) -> Result<Option<Token>, LexerError> {
-        match self.character {
+    fn parse_single(character: &char) -> Result<Option<Token>, LexerError> {
+        match character {
             '\0' => Ok(Some(Token::EOF)),
             '\n' => Ok(Some(Token::NEWLINE)),
-            character if Lexer::needs_buffer(character) => {
-                buffer.push(character);
-                Ok(None)
-            }
             '+' => Ok(Some(Token::PLUS)),
             '-' => Ok(Some(Token::MINUS)),
             '*' => Ok(Some(Token::ASTERISK)),
@@ -132,22 +129,42 @@ impl<'a> Lexer<'a> {
             '=' => Ok(Some(Token::EQ)),
             '<' => Ok(Some(Token::LT)),
             '>' => Ok(Some(Token::GT)),
+            '0'..='9' => Ok(Some(Token::NUMBER(character.to_string()))),
+            'a'..='z' | 'A'..='Z' | '_' => Ok(Some(Token::IDENT(character.to_string()))),
+            _ => Err(LexerError::InvalidToken(character.clone())),
+        }
+    }
+
+    pub fn get_token(&self, buffer: &mut CharacterBuffer) -> Result<Option<Token>, LexerError> {
+        match self.character {
+            character if Lexer::needs_buffer(character) => {
+                buffer.push(character);
+                Ok(None)
+            }
             character if Lexer::is_ending_character(character) => {
                 let token = self.parse_buffer(buffer)?;
+                if character != '\0'
+                    && character != ' '
+                    && character != '\t'
+                    && character != '\n'
+                    && character != ';'
+                {
+                    buffer.push(character);
+                }
                 Ok(token)
             }
-            _ => Err(LexerError::InvalidToken(self.character)),
+            _ => Lexer::parse_single(&self.character),
         }
     }
     fn parse_buffer(&self, buffer: &mut CharacterBuffer) -> Result<Option<Token>, LexerError> {
+        if buffer.0.is_empty() {
+            return Ok(None);
+        }
+        if buffer.0.len() == 1 {
+            return Lexer::parse_single(&buffer.popleft().unwrap());
+        }
         let buffer_as_string: String = buffer.into_iter().collect();
         match buffer_as_string.as_str() {
-            single_item if buffer_as_string.len() == 1 => match single_item {
-                "=" => Ok(Some(Token::EQ)),
-                ">" => Ok(Some(Token::GT)),
-                "<" => Ok(Some(Token::LT)),
-                _ => Ok(Some(Token::IDENT(String::from(single_item)))),
-            },
             "print" => Ok(Some(Token::PRINT)),
             "input" => Ok(Some(Token::INPUT)),
             "let" => Ok(Some(Token::LET)),
@@ -173,7 +190,13 @@ impl<'a> Lexer<'a> {
             "<=" => Ok(Some(Token::LTEQ)),
             ">=" => Ok(Some(Token::GTEQ)),
             "" => Ok(None),
-            _ => Ok(Some(Token::IDENT(buffer_as_string))),
+            digits if digits.chars().all(|c| c.is_digit(10)) => {
+                Ok(Some(Token::NUMBER(buffer_as_string)))
+            }
+            letters if letters.chars().all(|c| c.is_alphabetic()) => {
+                Ok(Some(Token::IDENT(buffer_as_string)))
+            }
+            _ => Err(LexerError::InvalidBufferToken(buffer_as_string)),
         }
     }
 }
