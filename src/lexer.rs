@@ -8,7 +8,6 @@ pub enum Token {
     NEWLINE,
     NUMBER(String),
     IDENT(String),
-    WHITESPACE,
 
     // Keywords
     PRINT,
@@ -170,6 +169,9 @@ impl<'a> Lexer<'a> {
             "not" => Ok(Some(Token::NOT)),
             "is" => Ok(Some(Token::IS)),
             "==" => Ok(Some(Token::EQEQ)),
+            "!=" => Ok(Some(Token::NOTEQ)),
+            "<=" => Ok(Some(Token::LTEQ)),
+            ">=" => Ok(Some(Token::GTEQ)),
             "" => Ok(None),
             _ => Ok(Some(Token::IDENT(buffer_as_string))),
         }
