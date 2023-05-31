@@ -1,0 +1,50 @@
+pub enum Token {
+    EOF,
+    INVALID,
+    NEWLINE,
+    NUMBER,
+    IDENT,
+    STRING,
+
+    // Keywords
+    PRINT,
+    INPUT,
+    LET,
+    IF,
+    ELSE,
+    ELIF,
+    WHILE,
+    FOR,
+    IN,
+    CONTINUE,
+    BREAK,
+    RETURN,
+    FUNKY,
+    TRUE,
+    FALSE,
+    NULL,
+    AND,
+    OR,
+    NOT,
+    IN,
+    IS,
+
+    // Operators
+    EQ,
+    PLUS,
+    MINUS,
+    ASTERISK,
+    SLASH,
+    EQEQ,
+    NOTEQ,
+    LT,
+    LTEQ,
+    GT,
+    GTEQ,
+}
+
+pub struct Lexer {
+    source: String,
+    position: usize,
+    character: char,
+}
