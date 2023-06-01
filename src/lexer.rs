@@ -12,14 +12,12 @@ pub enum Token {
 
     // Keywords
     PRINT,
-    INPUT,
     LET,
     IF,
     ELSE,
     ELIF,
     WHILE,
     FOR,
-    IN,
     CONTINUE,
     BREAK,
     RETURN,
@@ -47,22 +45,94 @@ pub enum Token {
 }
 
 #[derive(Debug)]
-struct CharacterBuffer(Vec<char>);
+struct CharacterBuffer<'a> {
+    origin: &'a str,
+    position: usize,
+    size: usize,
+}
 
-impl CharacterBuffer {
-    fn new() -> CharacterBuffer {
-        CharacterBuffer(vec![])
+impl<'a> AsRef<str> for CharacterBuffer<'a> {
+    fn as_ref(&self) -> &'a str {
+        &self.origin[self.position..self.position + self.size]
     }
+}
 
-    fn push(&mut self, item: char) {
-        self.0.push(item);
-    }
-
-    fn popleft(&mut self) -> Option<char> {
-        if self.0.is_empty() {
-            return None;
+impl<'a> CharacterBuffer<'a> {
+    fn new(origin: &'a str) -> CharacterBuffer<'a> {
+        CharacterBuffer {
+            origin,
+            position: 0,
+            size: 0,
         }
-        Some(self.0.remove(0))
+    }
+
+    fn push(&mut self) {
+        self.size += 1;
+    }
+
+    fn popleft(&mut self) -> Result<(), LexerError> {
+        if self.size == 0 {
+            return Err(LexerError::EmptyBuffer);
+        }
+        self.position += 1;
+        self.size -= 1;
+        Ok(())
+    }
+
+    fn is_empty(&self) -> bool {
+        self.size == 0
+    }
+
+    fn is_single(&self) -> bool {
+        self.size == 1
+    }
+
+    fn parse(&mut self) -> Result<Option<Token>, LexerError> {
+        if self.is_empty() {
+            return Ok(None);
+        }
+        if self.is_single() {
+            // I don't actually know if I need this case
+            return Lexer::parse_single(
+                &self.origin[self.position..self.position + 1]
+                    .chars()
+                    .next()
+                    .unwrap(),
+            );
+        }
+        let as_str = self.as_ref();
+        match as_str {
+            "print" => Ok(Some(Token::PRINT)),
+            "let" => Ok(Some(Token::LET)),
+            "if" => Ok(Some(Token::IF)),
+            "else" => Ok(Some(Token::ELSE)),
+            "elif" => Ok(Some(Token::ELIF)),
+            "while" => Ok(Some(Token::WHILE)),
+            "for" => Ok(Some(Token::FOR)),
+            "continue" => Ok(Some(Token::CONTINUE)),
+            "break" => Ok(Some(Token::BREAK)),
+            "return" => Ok(Some(Token::RETURN)),
+            "funky" => Ok(Some(Token::FUNKY)),
+            "true" => Ok(Some(Token::TRUE)),
+            "false" => Ok(Some(Token::FALSE)),
+            "null" => Ok(Some(Token::NULL)),
+            "and" => Ok(Some(Token::AND)),
+            "or" => Ok(Some(Token::OR)),
+            "not" => Ok(Some(Token::NOT)),
+            "is" => Ok(Some(Token::IS)),
+            "==" => Ok(Some(Token::EQEQ)),
+            "!=" => Ok(Some(Token::NOTEQ)),
+            "<=" => Ok(Some(Token::LTEQ)),
+            ">=" => Ok(Some(Token::GTEQ)),
+            "" => Ok(None),
+            digits if digits.chars().all(|c| c.is_digit(10)) => {
+                Ok(Some(Token::NUMBER(as_str.to_string())))
+            }
+            letters if letters.chars().all(|c| c.is_alphabetic()) => {
+                Ok(Some(Token::IDENT(as_str.to_string())))
+            }
+            _ => Err(LexerError::InvalidBufferToken(as_str.to_string())),
+        }
     }
 }
 
@@ -75,12 +145,12 @@ impl Iterator for &mut CharacterBuffer {
 }
 
 struct Lexer<'a> {
-    source: Chars<'a>,
+    source: Peekable<Chars<'a>>,
     character: char,
 }
 
 impl<'a> Lexer<'a> {
-    fn new(source: Chars<'a>) -> Lexer<'a> {
+    fn new(source: Peekable<Chars<'a>>) -> Lexer<'a> {
         let mut lexer = Lexer {
             source,
             character: '\0',
@@ -147,49 +217,6 @@ impl<'a> Lexer<'a> {
                 Ok(token)
             }
             _ => Lexer::parse_single(&self.character),
-        }
-    }
-    fn parse_buffer(&self, buffer: &mut CharacterBuffer) -> Result<Option<Token>, LexerError> {
-        if buffer.0.is_empty() {
-            return Ok(None);
-        }
-        if buffer.0.len() == 1 {
-            return Lexer::parse_single(&buffer.popleft().unwrap());
-        }
-        let buffer_as_string: String = buffer.into_iter().collect();
-        match buffer_as_string.as_str() {
-            "print" => Ok(Some(Token::PRINT)),
-            "input" => Ok(Some(Token::INPUT)),
-            "let" => Ok(Some(Token::LET)),
-            "if" => Ok(Some(Token::IF)),
-            "else" => Ok(Some(Token::ELSE)),
-            "elif" => Ok(Some(Token::ELIF)),
-            "while" => Ok(Some(Token::WHILE)),
-            "for" => Ok(Some(Token::FOR)),
-            "in" => Ok(Some(Token::IN)),
-            "continue" => Ok(Some(Token::CONTINUE)),
-            "break" => Ok(Some(Token::BREAK)),
-            "return" => Ok(Some(Token::RETURN)),
-            "funky" => Ok(Some(Token::FUNKY)),
-            "true" => Ok(Some(Token::TRUE)),
-            "false" => Ok(Some(Token::FALSE)),
-            "null" => Ok(Some(Token::NULL)),
-            "and" => Ok(Some(Token::AND)),
-            "or" => Ok(Some(Token::OR)),
-            "not" => Ok(Some(Token::NOT)),
-            "is" => Ok(Some(Token::IS)),
-            "==" => Ok(Some(Token::EQEQ)),
-            "!=" => Ok(Some(Token::NOTEQ)),
-            "<=" => Ok(Some(Token::LTEQ)),
-            ">=" => Ok(Some(Token::GTEQ)),
-            "" => Ok(None),
-            digits if digits.chars().all(|c| c.is_digit(10)) => {
-                Ok(Some(Token::NUMBER(buffer_as_string)))
-            }
-            letters if letters.chars().all(|c| c.is_alphabetic()) => {
-                Ok(Some(Token::IDENT(buffer_as_string)))
-            }
-            _ => Err(LexerError::InvalidBufferToken(buffer_as_string)),
         }
     }
 }

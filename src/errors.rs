@@ -6,4 +6,6 @@ pub enum LexerError {
     InvalidToken(char),
     #[error("Invalid sequence token: {0}")]
     InvalidBufferToken(String),
+    #[error("Tried to manipulate an empty buffer")]
+    EmptyBuffer,
 }
