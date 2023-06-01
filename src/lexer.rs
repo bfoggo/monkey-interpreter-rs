@@ -1,4 +1,5 @@
 use crate::errors::LexerError;
+use std::fmt::{Debug, Formatter};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
@@ -42,11 +43,18 @@ pub enum Token {
     GTEQ,
 }
 
-#[derive(Debug)]
 struct CharacterBuffer<'a> {
     origin: &'a str,
     position: usize,
     size: usize,
+}
+
+impl<'a> Debug for CharacterBuffer<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CharacterBuffer")
+            .field("as_str", &self.as_ref())
+            .finish()
+    }
 }
 
 impl<'a> AsRef<str> for CharacterBuffer<'a> {
@@ -64,17 +72,28 @@ impl<'a> CharacterBuffer<'a> {
         }
     }
 
-    fn push(&mut self) {
-        self.size += 1;
+    fn validate_end(&self) -> Result<(), LexerError> {
+        if self.position + self.size - 1 >= self.origin.len() {
+            return Err(LexerError::BufferOverflow);
+        }
+        Ok(())
     }
 
-    fn popleft(&mut self) -> Result<(), LexerError> {
-        if self.size == 0 {
-            return Err(LexerError::EmptyBuffer);
-        }
-        self.position += 1;
-        self.size -= 1;
+    fn push(&mut self) -> Result<(), LexerError> {
+        self.size += 1;
+        self.validate_end()?;
         Ok(())
+    }
+
+    fn skip(&mut self) -> Result<(), LexerError> {
+        self.position += 1;
+        self.validate_end()?;
+        Ok(())
+    }
+
+    fn clear(&mut self) {
+        self.position += self.size;
+        self.size = 0;
     }
 
     fn is_empty(&self) -> bool {
@@ -91,15 +110,17 @@ impl<'a> CharacterBuffer<'a> {
         }
         if self.is_single() {
             // I don't actually know if I need this case
-            return Lexer::parse_single(
+            let rtoken = Lexer::parse_single(
                 &self.origin[self.position..self.position + 1]
                     .chars()
                     .next()
                     .unwrap(),
             );
+            self.clear();
+            return rtoken;
         }
         let as_str = self.as_ref();
-        match as_str {
+        let rtoken = match as_str {
             "print" => Ok(Some(Token::PRINT)),
             "let" => Ok(Some(Token::LET)),
             "if" => Ok(Some(Token::IF)),
@@ -130,10 +151,13 @@ impl<'a> CharacterBuffer<'a> {
                 Ok(Some(Token::IDENT(as_str.to_string())))
             }
             _ => Err(LexerError::InvalidBufferToken(as_str.to_string())),
-        }
+        };
+        self.clear();
+        rtoken
     }
 }
 
+#[derive(Debug)]
 struct Lexer<'a> {
     source: &'a str,
     buffer: CharacterBuffer<'a>,
@@ -142,20 +166,18 @@ struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     fn new(source: &'a str) -> Lexer<'a> {
-        let mut lexer = Lexer {
+        Lexer {
             source,
             buffer: CharacterBuffer::new(source),
             position: 0,
-        };
-        lexer.advance();
-        lexer
+        }
     }
-
     fn advance(&mut self) {
         self.position += 1;
     }
 
     fn is_end(&self) -> bool {
+        println!("{:?}", &self.source[self.position..self.position + 1]);
         &self.source[self.position..self.position + 1] == "\0"
     }
 
@@ -202,7 +224,7 @@ impl<'a> Lexer<'a> {
             .unwrap();
         match character {
             character if Lexer::needs_buffer(character) => {
-                self.buffer.push();
+                self.buffer.push().unwrap();
                 Ok(None)
             }
             character if Lexer::is_buffer_terminating(character) => {
@@ -212,7 +234,9 @@ impl<'a> Lexer<'a> {
                     && *character != '\t'
                     && *character != '\n'
                 {
-                    self.buffer.push();
+                    self.buffer.push().unwrap();
+                } else {
+                    self.buffer.skip().unwrap();
                 }
                 Ok(token)
             }
@@ -236,4 +260,34 @@ pub fn lex(source: &str) -> Result<Vec<Token>, LexerError> {
         tokens.push(final_token);
     }
     Ok(tokens)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_buffer() {
+        let mut buffer = CharacterBuffer::new("hello world");
+        for i in 1..3 {
+            buffer.push().unwrap();
+            assert_eq!(buffer.size, i);
+        }
+        assert_eq!(buffer.as_ref(), "he");
+        let he_token = buffer.parse().unwrap().unwrap();
+        assert_eq!(he_token, Token::IDENT("he".to_string()));
+        assert_eq!(buffer.position, 2);
+        assert_eq!(buffer.size, 0);
+        for i in 1..6 {
+            buffer.push().unwrap();
+            assert_eq!(buffer.size, i);
+        }
+        assert_eq!(buffer.as_ref(), "llo w");
+        buffer.clear();
+        assert_eq!(buffer.position, 7);
+        for i in 1..4 {
+            buffer.push().unwrap();
+            assert_eq!(buffer.size, i);
+        }
+        assert!(buffer.push().is_err());
+    }
 }

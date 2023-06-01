@@ -8,4 +8,6 @@ pub enum LexerError {
     InvalidBufferToken(String),
     #[error("Tried to manipulate an empty buffer")]
     EmptyBuffer,
+    #[error("Tried to extend the buffer past its source")]
+    BufferOverflow,
 }
