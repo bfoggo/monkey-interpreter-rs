@@ -1,6 +1,4 @@
 use crate::errors::LexerError;
-use std::iter::Peekable;
-use std::str::Chars;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
@@ -136,41 +134,35 @@ impl<'a> CharacterBuffer<'a> {
     }
 }
 
-impl Iterator for &mut CharacterBuffer {
-    type Item = char;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.popleft()
-    }
-}
-
 struct Lexer<'a> {
-    source: Peekable<Chars<'a>>,
-    character: char,
+    source: &'a str,
+    buffer: CharacterBuffer<'a>,
+    position: usize,
 }
 
 impl<'a> Lexer<'a> {
-    fn new(source: Peekable<Chars<'a>>) -> Lexer<'a> {
+    fn new(source: &'a str) -> Lexer<'a> {
         let mut lexer = Lexer {
             source,
-            character: '\0',
+            buffer: CharacterBuffer::new(source),
+            position: 0,
         };
-        lexer.next_char();
+        lexer.advance();
         lexer
     }
 
-    fn get_character(&self) -> &char {
-        &self.character
+    fn advance(&mut self) {
+        self.position += 1;
     }
 
-    fn next_char(&mut self) -> char {
-        self.character = self.source.next().unwrap_or('\0');
-        self.character
+    fn is_end(&self) -> bool {
+        &self.source[self.position..self.position + 1] == "\0"
     }
-    fn finish(&mut self, buffer: &mut CharacterBuffer) -> Result<Option<Token>, LexerError> {
-        self.parse_buffer(buffer)
+
+    fn finish(&mut self) -> Result<Option<Token>, LexerError> {
+        self.buffer.parse()
     }
-    fn needs_buffer(character: char) -> bool {
+    fn needs_buffer(character: &char) -> bool {
         match character {
             'a'..='z' | 'A'..='Z' | '_' | '0'..='9' => true,
             '=' => true,
@@ -179,7 +171,7 @@ impl<'a> Lexer<'a> {
             _ => false,
         }
     }
-    fn is_buffer_terminating(character: char) -> bool {
+    fn is_buffer_terminating(character: &char) -> bool {
         match character {
             '\0' | '\n' | ' ' | '\t' | '+' | '-' | '*' | '/' | '=' | '<' | '>' | ';' => true,
             _ => false,
@@ -203,36 +195,43 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn get_token(&self, buffer: &mut CharacterBuffer) -> Result<Option<Token>, LexerError> {
-        match self.character {
+    fn get_token(&mut self) -> Result<Option<Token>, LexerError> {
+        let character = &self.source[self.position..self.position + 1]
+            .chars()
+            .next()
+            .unwrap();
+        match character {
             character if Lexer::needs_buffer(character) => {
-                buffer.push(character);
+                self.buffer.push();
                 Ok(None)
             }
             character if Lexer::is_buffer_terminating(character) => {
-                let token = self.parse_buffer(buffer)?;
-                if character != '\0' && character != ' ' && character != '\t' && character != '\n' {
-                    buffer.push(character);
+                let token = self.buffer.parse()?;
+                if *character != '\0'
+                    && *character != ' '
+                    && *character != '\t'
+                    && *character != '\n'
+                {
+                    self.buffer.push();
                 }
                 Ok(token)
             }
-            _ => Lexer::parse_single(&self.character),
+            _ => Lexer::parse_single(character),
         }
     }
 }
 
 pub fn lex(source: &str) -> Result<Vec<Token>, LexerError> {
-    let mut lexer = Lexer::new(source.chars());
-    let mut buffer = CharacterBuffer::new();
+    let mut lexer = Lexer::new(source);
     let mut tokens = vec![];
-    while *lexer.get_character() != '\0' {
-        let token = lexer.get_token(&mut buffer)?;
+    while !lexer.is_end() {
+        let token = lexer.get_token()?;
         if let Some(token) = token {
             tokens.push(token);
         }
-        lexer.next_char();
+        lexer.advance();
     }
-    let final_token = lexer.finish(&mut buffer)?;
+    let final_token = lexer.finish()?;
     if let Some(final_token) = final_token {
         tokens.push(final_token);
     }
