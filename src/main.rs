@@ -17,4 +17,6 @@ fn main() {
         );
         lexer.next_char();
     }
+    let final_token = lexer.finish(&mut buffer).unwrap();
+    println!("{:?}", final_token);
 }

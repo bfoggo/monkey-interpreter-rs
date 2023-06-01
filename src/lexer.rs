@@ -8,6 +8,7 @@ pub enum Token {
     NEWLINE,
     NUMBER(String),
     IDENT(String),
+    SEMICOLON,
 
     // Keywords
     PRINT,
@@ -103,6 +104,9 @@ impl<'a> Lexer<'a> {
     pub fn abort(&self, message: &str) -> ! {
         panic!("Lexing error: {}", message);
     }
+    pub fn finish(&mut self, buffer: &mut CharacterBuffer) -> Result<Option<Token>, LexerError> {
+        self.parse_buffer(buffer)
+    }
     fn needs_buffer(character: char) -> bool {
         match character {
             'a'..='z' | 'A'..='Z' | '_' | '0'..='9' => true,
@@ -112,7 +116,7 @@ impl<'a> Lexer<'a> {
             _ => false,
         }
     }
-    fn is_ending_character(character: char) -> bool {
+    fn is_buffer_terminating(character: char) -> bool {
         match character {
             '\0' | '\n' | ' ' | '\t' | '+' | '-' | '*' | '/' | '=' | '<' | '>' | ';' => true,
             _ => false,
@@ -131,6 +135,7 @@ impl<'a> Lexer<'a> {
             '>' => Ok(Some(Token::GT)),
             '0'..='9' => Ok(Some(Token::NUMBER(character.to_string()))),
             'a'..='z' | 'A'..='Z' | '_' => Ok(Some(Token::IDENT(character.to_string()))),
+            ';' => Ok(Some(Token::SEMICOLON)),
             _ => Err(LexerError::InvalidToken(character.clone())),
         }
     }
@@ -141,14 +146,9 @@ impl<'a> Lexer<'a> {
                 buffer.push(character);
                 Ok(None)
             }
-            character if Lexer::is_ending_character(character) => {
+            character if Lexer::is_buffer_terminating(character) => {
                 let token = self.parse_buffer(buffer)?;
-                if character != '\0'
-                    && character != ' '
-                    && character != '\t'
-                    && character != '\n'
-                    && character != ';'
-                {
+                if character != '\0' && character != ' ' && character != '\t' && character != '\n' {
                     buffer.push(character);
                 }
                 Ok(token)
