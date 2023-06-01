@@ -109,7 +109,6 @@ impl<'a> CharacterBuffer<'a> {
             return Ok(None);
         }
         if self.is_single() {
-            // I don't actually know if I need this case
             let rtoken = Lexer::parse_single(
                 &self.origin[self.position..self.position + 1]
                     .chars()
@@ -177,8 +176,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_end(&self) -> bool {
-        println!("{:?}", &self.source[self.position..self.position + 1]);
-        &self.source[self.position..self.position + 1] == "\0"
+        self.source.as_bytes()[self.position] as char == '\0'
     }
 
     fn finish(&mut self) -> Result<Option<Token>, LexerError> {
@@ -218,10 +216,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn get_token(&mut self) -> Result<Option<Token>, LexerError> {
-        let character = &self.source[self.position..self.position + 1]
-            .chars()
-            .next()
-            .unwrap();
+        let character = &(self.source.as_bytes()[self.position] as char);
         match character {
             character if Lexer::needs_buffer(character) => {
                 self.buffer.push().unwrap();
