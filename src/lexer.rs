@@ -47,18 +47,18 @@ pub enum Token {
 }
 
 #[derive(Debug)]
-pub struct CharacterBuffer(Vec<char>);
+struct CharacterBuffer(Vec<char>);
 
 impl CharacterBuffer {
-    pub fn new() -> CharacterBuffer {
+    fn new() -> CharacterBuffer {
         CharacterBuffer(vec![])
     }
 
-    pub fn push(&mut self, item: char) {
+    fn push(&mut self, item: char) {
         self.0.push(item);
     }
 
-    pub fn popleft(&mut self) -> Option<char> {
+    fn popleft(&mut self) -> Option<char> {
         if self.0.is_empty() {
             return None;
         }
@@ -74,13 +74,13 @@ impl Iterator for &mut CharacterBuffer {
     }
 }
 
-pub struct Lexer<'a> {
+struct Lexer<'a> {
     source: Peekable<Chars<'a>>,
     character: char,
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(source: Peekable<Chars<'a>>) -> Lexer<'a> {
+    fn new(source: Peekable<Chars<'a>>) -> Lexer<'a> {
         let mut lexer = Lexer {
             source,
             character: '\0',
@@ -89,22 +89,15 @@ impl<'a> Lexer<'a> {
         lexer
     }
 
-    pub fn get_character(&self) -> &char {
+    fn get_character(&self) -> &char {
         &self.character
     }
 
-    pub fn next_char(&mut self) -> char {
+    fn next_char(&mut self) -> char {
         self.character = self.source.next().unwrap_or('\0');
         self.character
     }
-
-    pub fn peek(&mut self) -> &char {
-        self.source.peek().unwrap_or(&'\0')
-    }
-    pub fn abort(&self, message: &str) -> ! {
-        panic!("Lexing error: {}", message);
-    }
-    pub fn finish(&mut self, buffer: &mut CharacterBuffer) -> Result<Option<Token>, LexerError> {
+    fn finish(&mut self, buffer: &mut CharacterBuffer) -> Result<Option<Token>, LexerError> {
         self.parse_buffer(buffer)
     }
     fn needs_buffer(character: char) -> bool {
@@ -140,7 +133,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn get_token(&self, buffer: &mut CharacterBuffer) -> Result<Option<Token>, LexerError> {
+    fn get_token(&self, buffer: &mut CharacterBuffer) -> Result<Option<Token>, LexerError> {
         match self.character {
             character if Lexer::needs_buffer(character) => {
                 buffer.push(character);
@@ -199,4 +192,22 @@ impl<'a> Lexer<'a> {
             _ => Err(LexerError::InvalidBufferToken(buffer_as_string)),
         }
     }
+}
+
+pub fn lex(source: &str) -> Result<Vec<Token>, LexerError> {
+    let mut lexer = Lexer::new(source.chars().peekable());
+    let mut buffer = CharacterBuffer::new();
+    let mut tokens = vec![];
+    while *lexer.get_character() != '\0' {
+        let token = lexer.get_token(&mut buffer)?;
+        if let Some(token) = token {
+            tokens.push(token);
+        }
+        lexer.next_char();
+    }
+    let final_token = lexer.finish(&mut buffer)?;
+    if let Some(final_token) = final_token {
+        tokens.push(final_token);
+    }
+    Ok(tokens)
 }
