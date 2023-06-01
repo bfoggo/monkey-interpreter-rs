@@ -75,12 +75,12 @@ impl Iterator for &mut CharacterBuffer {
 }
 
 struct Lexer<'a> {
-    source: Peekable<Chars<'a>>,
+    source: Chars<'a>,
     character: char,
 }
 
 impl<'a> Lexer<'a> {
-    fn new(source: Peekable<Chars<'a>>) -> Lexer<'a> {
+    fn new(source: Chars<'a>) -> Lexer<'a> {
         let mut lexer = Lexer {
             source,
             character: '\0',
@@ -195,7 +195,7 @@ impl<'a> Lexer<'a> {
 }
 
 pub fn lex(source: &str) -> Result<Vec<Token>, LexerError> {
-    let mut lexer = Lexer::new(source.chars().peekable());
+    let mut lexer = Lexer::new(source.chars());
     let mut buffer = CharacterBuffer::new();
     let mut tokens = vec![];
     while *lexer.get_character() != '\0' {
