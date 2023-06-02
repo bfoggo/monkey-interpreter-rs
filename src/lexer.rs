@@ -1,5 +1,8 @@
 use crate::errors::LexerError;
-use std::fmt::{Debug, Formatter};
+use std::{
+    fmt::{Debug, Formatter},
+    str::Chars,
+};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
@@ -158,30 +161,38 @@ impl<'a> CharacterBuffer<'a> {
 
 #[derive(Debug)]
 struct Lexer<'a> {
-    source: &'a str,
     buffer: CharacterBuffer<'a>,
-    position: usize,
+    char_iter: Chars<'a>,
+    curr_character: char,
 }
 
 impl<'a> Lexer<'a> {
     fn new(source: &'a str) -> Lexer<'a> {
-        Lexer {
-            source,
+        let mut lexer = Lexer {
             buffer: CharacterBuffer::new(source),
-            position: 0,
-        }
+            char_iter: source.chars(),
+            curr_character: '\0',
+        };
+        lexer.curr_character = lexer.get_character().unwrap();
+        lexer
     }
+
     fn advance(&mut self) {
-        self.position += 1;
+        self.curr_character = self.get_character().unwrap_or('\0');
+    }
+
+    fn get_character(&mut self) -> Option<char> {
+        self.char_iter.next()
     }
 
     fn is_end(&self) -> bool {
-        self.source.as_bytes()[self.position] as char == '\0'
+        self.curr_character == '\0'
     }
 
     fn finish(&mut self) -> Result<Option<Token>, LexerError> {
         self.buffer.parse()
     }
+
     fn needs_buffer(character: &char) -> bool {
         match character {
             'a'..='z' | 'A'..='Z' | '_' | '0'..='9' => true,
@@ -216,26 +227,21 @@ impl<'a> Lexer<'a> {
     }
 
     fn get_token(&mut self) -> Result<Option<Token>, LexerError> {
-        let character = &(self.source.as_bytes()[self.position] as char);
-        match character {
-            character if Lexer::needs_buffer(character) => {
+        match self.curr_character {
+            character if Lexer::needs_buffer(&character) => {
                 self.buffer.push().unwrap();
                 Ok(None)
             }
-            character if Lexer::is_buffer_terminating(character) => {
+            character if Lexer::is_buffer_terminating(&character) => {
                 let token = self.buffer.parse()?;
-                if *character != '\0'
-                    && *character != ' '
-                    && *character != '\t'
-                    && *character != '\n'
-                {
+                if character != '\0' && character != ' ' && character != '\t' && character != '\n' {
                     self.buffer.push().unwrap();
                 } else {
                     self.buffer.skip().unwrap();
                 }
                 Ok(token)
             }
-            _ => Lexer::parse_single(character),
+            _ => Lexer::parse_single(&self.curr_character),
         }
     }
 }
