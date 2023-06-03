@@ -44,6 +44,14 @@ pub enum Token {
     LTEQ,
     GT,
     GTEQ,
+
+    // Delimiters
+    LPAREN,
+    RPAREN,
+    LBRACE,
+    RBRACE,
+    COMMA,
+    DOT,
 }
 
 struct CharacterBuffer<'a> {
@@ -75,22 +83,13 @@ impl<'a> CharacterBuffer<'a> {
         }
     }
 
-    fn validate_end(&self) -> Result<(), LexerError> {
-        if self.position + self.size - 1 >= self.origin.len() {
-            return Err(LexerError::BufferOverflow);
-        }
-        Ok(())
-    }
-
     fn push(&mut self) -> Result<(), LexerError> {
         self.size += 1;
-        self.validate_end()?;
         Ok(())
     }
 
     fn skip(&mut self) -> Result<(), LexerError> {
         self.position += 1;
-        self.validate_end()?;
         Ok(())
     }
 
@@ -204,7 +203,8 @@ impl<'a> Lexer<'a> {
     }
     fn is_buffer_terminating(character: &char) -> bool {
         match character {
-            '\0' | '\n' | ' ' | '\t' | '+' | '-' | '*' | '/' | '=' | '<' | '>' | ';' => true,
+            '\0' | '\n' | ' ' | '\t' | '+' | '-' | '*' | '/' | '=' | '<' | '>' | ';' | '('
+            | ')' | '{' | '}' | ',' | '.' => true,
             _ => false,
         }
     }
@@ -222,6 +222,12 @@ impl<'a> Lexer<'a> {
             '0'..='9' => Ok(Some(Token::NUMBER(character.to_string()))),
             'a'..='z' | 'A'..='Z' | '_' => Ok(Some(Token::IDENT(character.to_string()))),
             ';' => Ok(Some(Token::SEMICOLON)),
+            '(' => Ok(Some(Token::LPAREN)),
+            ')' => Ok(Some(Token::RPAREN)),
+            '{' => Ok(Some(Token::LBRACE)),
+            '}' => Ok(Some(Token::RBRACE)),
+            ',' => Ok(Some(Token::COMMA)),
+            '.' => Ok(Some(Token::DOT)),
             _ => Err(LexerError::InvalidToken(character.clone())),
         }
     }
@@ -229,17 +235,11 @@ impl<'a> Lexer<'a> {
     fn get_token(&mut self) -> Result<Option<Token>, LexerError> {
         match self.curr_character {
             character if Lexer::needs_buffer(&character) => {
-                self.buffer.push().unwrap();
-                Ok(None)
-            }
-            character if Lexer::is_buffer_terminating(&character) => {
-                let token = self.buffer.parse()?;
-                if character != '\0' && character != ' ' && character != '\t' && character != '\n' {
-                    self.buffer.push().unwrap();
-                } else {
-                    self.buffer.skip().unwrap();
+                while !self.is_end() && !Lexer::is_buffer_terminating(&self.curr_character) {
+                    self.buffer.push()?;
+                    self.advance();
                 }
-                Ok(token)
+                self.buffer.parse()
             }
             _ => Lexer::parse_single(&self.curr_character),
         }
