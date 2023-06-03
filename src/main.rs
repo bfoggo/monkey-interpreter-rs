@@ -1,5 +1,6 @@
 mod errors;
 mod lexer;
+mod virtual_machine;
 
 use lexer::lex;
 
