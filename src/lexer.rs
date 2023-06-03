@@ -1,6 +1,7 @@
 use crate::errors::LexerError;
 use std::{
     fmt::{Debug, Formatter},
+    iter::Peekable,
     str::Chars,
 };
 
@@ -8,6 +9,7 @@ use std::{
 pub enum Token {
     EOF,
     NEWLINE,
+    WHITESPACE,
     NUMBER(String),
     IDENT(String),
     SEMICOLON,
@@ -161,7 +163,7 @@ impl<'a> CharacterBuffer<'a> {
 #[derive(Debug)]
 struct Lexer<'a> {
     buffer: CharacterBuffer<'a>,
-    char_iter: Chars<'a>,
+    char_iter: Peekable<Chars<'a>>,
     curr_character: char,
 }
 
@@ -169,7 +171,7 @@ impl<'a> Lexer<'a> {
     fn new(source: &'a str) -> Lexer<'a> {
         let mut lexer = Lexer {
             buffer: CharacterBuffer::new(source),
-            char_iter: source.chars(),
+            char_iter: source.chars().peekable(),
             curr_character: '\0',
         };
         lexer.curr_character = lexer.get_character().unwrap();
@@ -228,6 +230,7 @@ impl<'a> Lexer<'a> {
             '}' => Ok(Some(Token::RBRACE)),
             ',' => Ok(Some(Token::COMMA)),
             '.' => Ok(Some(Token::DOT)),
+            ' ' | '\t' => Ok(Some(Token::WHITESPACE)),
             _ => Err(LexerError::InvalidToken(character.clone())),
         }
     }
@@ -235,13 +238,21 @@ impl<'a> Lexer<'a> {
     fn get_token(&mut self) -> Result<Option<Token>, LexerError> {
         match self.curr_character {
             character if Lexer::needs_buffer(&character) => {
-                while !self.is_end() && !Lexer::is_buffer_terminating(&self.curr_character) {
+                while !self.is_end()
+                    && !Lexer::is_buffer_terminating(&self.char_iter.peek().unwrap_or(&'\0'))
+                {
                     self.buffer.push()?;
                     self.advance();
                 }
-                self.buffer.parse()
+                self.buffer.push()?;
+                let token = self.buffer.parse();
+                token
             }
-            _ => Lexer::parse_single(&self.curr_character),
+            _ => {
+                let token = Lexer::parse_single(&self.curr_character);
+                self.buffer.skip()?;
+                token
+            }
         }
     }
 }
