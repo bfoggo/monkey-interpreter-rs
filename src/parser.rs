@@ -3,24 +3,31 @@ use crate::lexer::Token;
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
+#[derive(Debug, PartialEq, Clone)]
 struct Identifier(String);
+
+#[derive(Debug, PartialEq, Clone)]
 struct LiteralExpression(String);
 
+#[derive(Debug, PartialEq, Clone)]
 enum Expression {
     Literal(LiteralExpression),
 }
 
+#[derive(Debug, PartialEq, Clone)]
 struct LetStatement {
     token: Token,
     name: Identifier,
     value: Expression,
 }
 
+#[derive(Debug, PartialEq, Clone)]
 enum Statement {
     Let(LetStatement),
 }
 
-struct Program {
+#[derive(Debug, PartialEq, Clone)]
+pub struct Program {
     statements: Vec<Statement>,
 }
 struct Parser {
@@ -99,4 +106,9 @@ impl Parser {
             _ => Err(ExpressionError::InvalidExpression),
         }
     }
+}
+
+pub fn parse(tokens: Vec<Token>) -> Result<Program, ParserError> {
+    let mut parser = Parser::new(tokens);
+    parser.parse()
 }
