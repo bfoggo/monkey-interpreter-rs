@@ -21,7 +21,7 @@ mod tagged_token {
     }
 
     #[derive(Debug, PartialEq, Clone)]
-    enum ComposableToken {
+    pub enum ComposableToken {
         NUMBER(String),
         CHARS(String),
         EQ,

@@ -1,4 +1,4 @@
-use crate::lexer::{lex, Token};
+use crate::lexer::{lex};
 use std::io::{self, Write};
 
 pub fn repl(prompt: &'static str) -> io::Result<()> {
