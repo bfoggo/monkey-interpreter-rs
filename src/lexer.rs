@@ -1,11 +1,15 @@
-// This is a bit unoptimal due to the string allocations in TaggedToken::check_termination. 
-// However, we definitely want the Ident's and Numbers allocated so that we don't have to keep 
+// This is a bit unoptimal due to the string allocations in TaggedToken::check_termination.
+// However, we definitely want the Ident's and Numbers allocated so that we don't have to keep
 // the source code in memory at all times. However, for words that are going to eventually be
 // keywords, we can just use a reference to the source code and then evenutally map them to a &'static str.
 // This will be implemented after finishing the interpreter's core logic.
 
 use crate::errors::LexerError;
-use std::{fmt::Debug, iter::Peekable, str::Chars};
+use std::{
+    fmt::{Debug, Display},
+    iter::Peekable,
+    str::Chars,
+};
 
 mod tagged_token {
 
@@ -239,6 +243,51 @@ pub enum Token {
     CONST,
     NULL,
     INVALID,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::EOF => write!(f, "EOF"),
+            Token::NEWLINE => write!(f, "NEWLINE"),
+            Token::SEMICOLON => write!(f, "SEMICOLON"),
+            Token::PLUS => write!(f, "PLUS"),
+            Token::MINUS => write!(f, "MINUS"),
+            Token::ASTERISK => write!(f, "ASTERISK"),
+            Token::DOT => write!(f, "DOT"),
+            Token::COMMA => write!(f, "COMMA"),
+            Token::LPAREN => write!(f, "LPAREN"),
+            Token::RPAREN => write!(f, "RPAREN"),
+            Token::LBRACE => write!(f, "LBRACE"),
+            Token::RBRACE => write!(f, "RBRACE"),
+            Token::EQ => write!(f, "EQ"),
+            Token::NOT => write!(f, "NOT"),
+            Token::LT => write!(f, "LT"),
+            Token::GT => write!(f, "GT"),
+            Token::EQEQ => write!(f, "EQEQ"),
+            Token::NOTEQ => write!(f, "NOTEQ"),
+            Token::LTEQ => write!(f, "LTEQ"),
+            Token::GTEQ => write!(f, "GTEQ"),
+            Token::NUMBER(number) => write!(f, "NUMBER({})", number),
+            Token::IDENT(identifier) => write!(f, "IDENT({})", identifier),
+            Token::IF => write!(f, "IF"),
+            Token::ELSE => write!(f, "ELSE"),
+            Token::WHILE => write!(f, "WHILE"),
+            Token::FOR => write!(f, "FOR"),
+            Token::RETURN => write!(f, "RETURN"),
+            Token::BREAK => write!(f, "BREAK"),
+            Token::CONTINUE => write!(f, "CONTINUE"),
+            Token::PRINT => write!(f, "PRINT"),
+            Token::INPUT => write!(f, "INPUT"),
+            Token::TRUE => write!(f, "TRUE"),
+            Token::FALSE => write!(f, "FALSE"),
+            Token::FN => write!(f, "FN"),
+            Token::LET => write!(f, "LET"),
+            Token::CONST => write!(f, "CONST"),
+            Token::NULL => write!(f, "NULL"),
+            Token::INVALID => write!(f, "INVALID"),
+        }
+    }
 }
 
 impl From<TaggedToken> for Token {

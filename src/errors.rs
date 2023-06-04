@@ -1,7 +1,14 @@
+use crate::lexer::Token;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum LexerError {}
+
+#[derive(Debug, Error)]
+pub enum UndefinedBehaviorError {
+    #[error("tried to parse {0} as {1}")]
+    InvalidParse(Token, String),
+}
 
 #[derive(Debug, Error)]
 pub enum LetStatementError {
@@ -21,4 +28,31 @@ pub enum ParserError {
     InvalidToken,
     #[error("Let statement error: {0}")]
     LetStatementError(LetStatementError),
+    #[error("Undefined behavior: {0}")]
+    UndefinedBehaviorError(UndefinedBehaviorError),
+}
+
+impl From<LetStatementError> for ParserError {
+    fn from(error: LetStatementError) -> Self {
+        ParserError::LetStatementError(error)
+    }
+}
+
+impl From<UndefinedBehaviorError> for ParserError {
+    fn from(error: UndefinedBehaviorError) -> Self {
+        ParserError::UndefinedBehaviorError(error)
+    }
+}
+
+impl From<UndefinedBehaviorError> for LetStatementError {
+    fn from(error: UndefinedBehaviorError) -> Self {
+        match error {
+            UndefinedBehaviorError::InvalidParse(token, expected) => match token {
+                Token::IDENT(_) => LetStatementError::NoIdentifier,
+                Token::EQ => LetStatementError::NoEqualSign,
+                Token::SEMICOLON => LetStatementError::NoSemicolon,
+                _ => LetStatementError::NoValue,
+            },
+        }
+    }
 }
