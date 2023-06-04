@@ -22,8 +22,15 @@ struct LetStatement {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+struct ReturnStatement {
+    token: Token,
+    value: Expression,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 enum Statement {
     Let(LetStatement),
+    Return(ReturnStatement),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -50,6 +57,10 @@ impl Parser {
                 Token::LET => {
                     let statement = self.parse_let_statement()?;
                     program.statements.push(Statement::Let(statement));
+                }
+                Token::RETURN => {
+                    let statement = self.parse_return_statement()?;
+                    program.statements.push(Statement::Return(statement));
                 }
                 Token::NEWLINE | Token::SEMICOLON => {
                     self.tokens.next().unwrap();
@@ -95,6 +106,12 @@ impl Parser {
             name: identifier,
             value,
         })
+    }
+
+    fn parse_return_statement(&mut self) -> Result<ReturnStatement, ExpressionError> {
+        let token = self.tokens.next().unwrap();
+        let value = self.parse_expression()?;
+        Ok(ReturnStatement { token, value })
     }
 
     fn parse_expression(&mut self) -> Result<Expression, ExpressionError> {

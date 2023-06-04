@@ -57,11 +57,19 @@ pub enum ParserError {
     LetStatementError(LetStatementError),
     #[error("Undefined behavior: {0}")]
     UndefinedBehaviorError(UndefinedBehaviorError),
+    #[error("Expression error: {0}")]
+    ExpressionError(ExpressionError),
 }
 
 impl From<LetStatementError> for ParserError {
     fn from(error: LetStatementError) -> Self {
         ParserError::LetStatementError(error)
+    }
+}
+
+impl From<ExpressionError> for ParserError {
+    fn from(error: ExpressionError) -> Self {
+        ParserError::ExpressionError(error)
     }
 }
 
