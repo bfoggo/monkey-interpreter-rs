@@ -28,9 +28,16 @@ struct ReturnStatement {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+struct ExpressionStatement {
+    token: Token,
+    expression: Expression,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 enum Statement {
     Let(LetStatement),
     Return(ReturnStatement),
+    Expression(ExpressionStatement),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -112,6 +119,12 @@ impl Parser {
         let token = self.tokens.next().unwrap();
         let value = self.parse_expression()?;
         Ok(ReturnStatement { token, value })
+    }
+
+    fn parse_expression_statement(&mut self) -> Result<ExpressionStatement, ExpressionError> {
+        let token = self.tokens.next().unwrap();
+        let expression = self.parse_expression()?;
+        Ok(ExpressionStatement { token, expression })
     }
 
     fn parse_expression(&mut self) -> Result<Expression, ExpressionError> {
