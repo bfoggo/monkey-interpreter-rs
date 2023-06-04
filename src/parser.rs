@@ -51,7 +51,10 @@ impl Parser {
                     let statement = self.parse_let_statement()?;
                     program.statements.push(Statement::Let(statement));
                 }
-                _ => {}
+                Token::NEWLINE | Token::SEMICOLON => {
+                    self.tokens.next().unwrap();
+                }
+                _ => return Err(ParserError::InvalidToken),
             }
         }
         Ok(program)
