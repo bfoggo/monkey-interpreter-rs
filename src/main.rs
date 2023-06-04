@@ -1,5 +1,6 @@
 mod errors;
 mod lexer;
+mod parser;
 mod repl;
 mod virtual_machine;
 
