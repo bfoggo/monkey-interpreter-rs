@@ -1,3 +1,9 @@
+// This is a bit unoptimal due to the string allocations in TaggedToken::check_termination. 
+// However, we definitely want the Ident's and Numbers allocated so that we don't have to keep 
+// the source code in memory at all times. However, for words that are going to eventually be
+// keywords, we can just use a reference to the source code and then evenutally map them to a &'static str.
+// This will be implemented after finishing the interpreter's core logic.
+
 use crate::errors::LexerError;
 use std::{fmt::Debug, iter::Peekable, str::Chars};
 
