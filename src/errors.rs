@@ -11,6 +11,12 @@ pub enum UndefinedBehaviorError {
 }
 
 #[derive(Debug, Error)]
+pub enum ExpressionError {
+    #[error("Invalid expression")]
+    InvalidExpression,
+}
+
+#[derive(Debug, Error)]
 pub enum LetStatementError {
     #[error("Let statements need an equal sign")]
     NoEqualSign,
@@ -20,6 +26,27 @@ pub enum LetStatementError {
     NoSemicolon,
     #[error("Let statements need a value")]
     NoValue,
+}
+
+impl From<UndefinedBehaviorError> for LetStatementError {
+    fn from(error: UndefinedBehaviorError) -> Self {
+        match error {
+            UndefinedBehaviorError::InvalidParse(token, expected) => match token {
+                Token::IDENT(_) => LetStatementError::NoIdentifier,
+                Token::EQ => LetStatementError::NoEqualSign,
+                Token::SEMICOLON => LetStatementError::NoSemicolon,
+                _ => LetStatementError::NoValue,
+            },
+        }
+    }
+}
+
+impl From<ExpressionError> for LetStatementError {
+    fn from(error: ExpressionError) -> Self {
+        match error {
+            ExpressionError::InvalidExpression => LetStatementError::NoValue,
+        }
+    }
 }
 
 #[derive(Debug, Error)]
@@ -41,18 +68,5 @@ impl From<LetStatementError> for ParserError {
 impl From<UndefinedBehaviorError> for ParserError {
     fn from(error: UndefinedBehaviorError) -> Self {
         ParserError::UndefinedBehaviorError(error)
-    }
-}
-
-impl From<UndefinedBehaviorError> for LetStatementError {
-    fn from(error: UndefinedBehaviorError) -> Self {
-        match error {
-            UndefinedBehaviorError::InvalidParse(token, expected) => match token {
-                Token::IDENT(_) => LetStatementError::NoIdentifier,
-                Token::EQ => LetStatementError::NoEqualSign,
-                Token::SEMICOLON => LetStatementError::NoSemicolon,
-                _ => LetStatementError::NoValue,
-            },
-        }
     }
 }
