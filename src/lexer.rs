@@ -193,6 +193,7 @@ mod tagged_token {
 
 use tagged_token::{IntermediateToken, SingleOrComposable, TaggedToken};
 
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     EOF,
     NEWLINE,
