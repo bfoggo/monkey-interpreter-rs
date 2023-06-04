@@ -32,14 +32,12 @@ pub struct Program {
 }
 struct Parser {
     tokens: Peekable<IntoIter<Token>>,
-    current: usize,
 }
 
 impl Parser {
     fn new(tokens: Vec<Token>) -> Parser {
         Parser {
             tokens: tokens.into_iter().peekable(),
-            current: 0,
         }
     }
 
@@ -62,10 +60,7 @@ impl Parser {
     fn parse_identifier(&mut self) -> Result<Identifier, UndefinedBehaviorError> {
         let token = self.tokens.next().unwrap();
         match token {
-            Token::IDENT(identifier) => {
-                let token = self.tokens.next().unwrap();
-                Ok(Identifier(identifier))
-            }
+            Token::IDENT(identifier) => Ok(Identifier(identifier)),
             _ => {
                 return Err(UndefinedBehaviorError::InvalidParse(
                     token,
@@ -78,7 +73,7 @@ impl Parser {
     fn parse_let_statement(&mut self) -> Result<LetStatement, LetStatementError> {
         let token = self.tokens.next().unwrap();
         let next_token = self.tokens.peek().unwrap();
-        let mut identifier;
+        let identifier;
         match next_token {
             Token::IDENT(_) => {
                 identifier = self.parse_identifier()?;

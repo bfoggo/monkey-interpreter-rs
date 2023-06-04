@@ -1,4 +1,5 @@
-use crate::lexer::{lex};
+use crate::lexer::lex;
+use crate::parser::parse;
 use std::io::{self, Write};
 
 pub fn repl(prompt: &'static str) -> io::Result<()> {
@@ -9,5 +10,7 @@ pub fn repl(prompt: &'static str) -> io::Result<()> {
         io::stdin().read_line(&mut buffer)?;
         let tokens = lex(&buffer).unwrap();
         println!("{:?}", tokens);
+        let program = parse(tokens).unwrap();
+        println!("{:?}", program);
     }
 }
