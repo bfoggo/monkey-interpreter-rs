@@ -21,7 +21,7 @@ pub enum SingleToken {
 #[derive(Debug, PartialEq, Clone)]
 enum ComposableToken {
     NUMBER(String),
-    IDENT(String),
+    CHARS(String),
     EQ,
     NOT,
     LT,
@@ -46,6 +46,23 @@ pub enum CompositeToken {
     NOTEQ,
     LTEQ,
     GTEQ,
+
+    // keywords
+    IF,
+    ELSE,
+    WHILE,
+    FOR,
+    RETURN,
+    BREAK,
+    CONTINUE,
+    PRINT,
+    INPUT,
+    TRUE,
+    FALSE,
+    FN,
+    LET,
+    CONST,
+    NULL,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -84,7 +101,7 @@ impl Token {
                 character.to_string(),
             ))),
             'a'..='z' | 'A'..='Z' | '_' => Some(SingleOrComposable::Composable(
-                ComposableToken::IDENT(character.to_string()),
+                ComposableToken::CHARS(character.to_string()),
             )),
             ' ' | '\t' => None,
             _ => Some(SingleOrComposable::Single(SingleToken::INVALID)),
@@ -109,12 +126,32 @@ impl Token {
                     _ => IntermediateToken::FinishExclusive(CompositeToken::NUMBER(curr_number)),
                 }
             }
-            IntermediateToken::Continue(ComposableToken::IDENT(curr_ident)) => {
+            IntermediateToken::Continue(ComposableToken::CHARS(curr_chars)) => {
                 match terminating_character {
                     'a'..='z' | 'A'..='Z' | '_' | '0'..='9' => IntermediateToken::Continue(
-                        ComposableToken::IDENT(curr_ident + &terminating_character.to_string()),
+                        ComposableToken::CHARS(curr_chars + &terminating_character.to_string()),
                     ),
-                    _ => IntermediateToken::FinishExclusive(CompositeToken::IDENT(curr_ident)),
+                    _ => {
+                        let final_token = match curr_chars.as_str() {
+                            "if" => CompositeToken::IF,
+                            "else" => CompositeToken::ELSE,
+                            "while" => CompositeToken::WHILE,
+                            "for" => CompositeToken::FOR,
+                            "return" => CompositeToken::RETURN,
+                            "break" => CompositeToken::BREAK,
+                            "continue" => CompositeToken::CONTINUE,
+                            "print" => CompositeToken::PRINT,
+                            "input" => CompositeToken::INPUT,
+                            "true" => CompositeToken::TRUE,
+                            "false" => CompositeToken::FALSE,
+                            "fn" => CompositeToken::FN,
+                            "let" => CompositeToken::LET,
+                            "const" => CompositeToken::CONST,
+                            "null" => CompositeToken::NULL,
+                            _ => CompositeToken::IDENT(curr_chars),
+                        };
+                        IntermediateToken::FinishExclusive(final_token)
+                    }
                 }
             }
             IntermediateToken::Continue(ComposableToken::EQ) => match terminating_character {
