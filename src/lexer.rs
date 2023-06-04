@@ -230,7 +230,7 @@ impl<'a> Lexer<'a> {
             '}' => Ok(Some(Token::RBRACE)),
             ',' => Ok(Some(Token::COMMA)),
             '.' => Ok(Some(Token::DOT)),
-            ' ' | '\t' => Ok(Some(Token::WHITESPACE)),
+            ' ' | '\t' => Ok(None),
             _ => Err(LexerError::InvalidToken(character.clone())),
         }
     }
