@@ -232,6 +232,7 @@ pub enum Token {
     LET,
     CONST,
     NULL,
+    INVALID,
 }
 
 impl From<TaggedToken> for Token {
@@ -250,7 +251,7 @@ impl From<TaggedToken> for Token {
                 tagged_token::SingleToken::RPAREN => Token::RPAREN,
                 tagged_token::SingleToken::LBRACE => Token::LBRACE,
                 tagged_token::SingleToken::RBRACE => Token::RBRACE,
-                tagged_token::SingleToken::INVALID => panic!("Invalid token"),
+                tagged_token::SingleToken::INVALID => Token::INVALID,
             },
             TaggedToken::Composite(composite_token) => match composite_token {
                 tagged_token::CompositeToken::NUMBER(number) => Token::NUMBER(number),
