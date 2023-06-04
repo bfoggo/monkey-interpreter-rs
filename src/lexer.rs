@@ -51,7 +51,8 @@ pub enum CompositeToken {
 #[derive(Debug, PartialEq, Clone)]
 enum IntermediateToken {
     Continue(ComposableToken),
-    Finish(CompositeToken),
+    FinishInclusive(CompositeToken),
+    FinishExclusive(CompositeToken),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -94,15 +95,18 @@ impl Token {
         terminating_character: &char,
     ) -> IntermediateToken {
         match composable {
-            IntermediateToken::Finish(composite_token) => {
-                IntermediateToken::Finish(composite_token)
+            IntermediateToken::FinishInclusive(composite_token) => {
+                IntermediateToken::FinishInclusive(composite_token)
+            }
+            IntermediateToken::FinishExclusive(composite_token) => {
+                IntermediateToken::FinishExclusive(composite_token)
             }
             IntermediateToken::Continue(ComposableToken::NUMBER(curr_number)) => {
                 match terminating_character {
                     '0'..='9' => IntermediateToken::Continue(ComposableToken::NUMBER(
                         curr_number + &terminating_character.to_string(),
                     )),
-                    _ => IntermediateToken::Finish(CompositeToken::NUMBER(curr_number)),
+                    _ => IntermediateToken::FinishExclusive(CompositeToken::NUMBER(curr_number)),
                 }
             }
             IntermediateToken::Continue(ComposableToken::IDENT(curr_ident)) => {
@@ -110,24 +114,24 @@ impl Token {
                     'a'..='z' | 'A'..='Z' | '_' | '0'..='9' => IntermediateToken::Continue(
                         ComposableToken::IDENT(curr_ident + &terminating_character.to_string()),
                     ),
-                    _ => IntermediateToken::Finish(CompositeToken::IDENT(curr_ident)),
+                    _ => IntermediateToken::FinishExclusive(CompositeToken::IDENT(curr_ident)),
                 }
             }
             IntermediateToken::Continue(ComposableToken::EQ) => match terminating_character {
-                '=' => IntermediateToken::Finish(CompositeToken::EQEQ),
-                _ => IntermediateToken::Finish(CompositeToken::EQ),
+                '=' => IntermediateToken::FinishInclusive(CompositeToken::EQEQ),
+                _ => IntermediateToken::FinishExclusive(CompositeToken::EQ),
             },
             IntermediateToken::Continue(ComposableToken::NOT) => match terminating_character {
-                '=' => IntermediateToken::Finish(CompositeToken::NOTEQ),
-                _ => IntermediateToken::Finish(CompositeToken::NOT),
+                '=' => IntermediateToken::FinishInclusive(CompositeToken::NOTEQ),
+                _ => IntermediateToken::FinishExclusive(CompositeToken::NOT),
             },
             IntermediateToken::Continue(ComposableToken::LT) => match terminating_character {
-                '=' => IntermediateToken::Finish(CompositeToken::LTEQ),
-                _ => IntermediateToken::Finish(CompositeToken::LT),
+                '=' => IntermediateToken::FinishInclusive(CompositeToken::LTEQ),
+                _ => IntermediateToken::FinishExclusive(CompositeToken::LT),
             },
             IntermediateToken::Continue(ComposableToken::GT) => match terminating_character {
-                '=' => IntermediateToken::Finish(CompositeToken::GTEQ),
-                _ => IntermediateToken::Finish(CompositeToken::GT),
+                '=' => IntermediateToken::FinishInclusive(CompositeToken::GTEQ),
+                _ => IntermediateToken::FinishExclusive(CompositeToken::GT),
             },
         }
     }
@@ -161,6 +165,10 @@ impl<'a> Lexer<'a> {
         lexer
     }
 
+    fn peek(&mut self) -> &char {
+        self.char_iter.peek().unwrap()
+    }
+
     fn advance(&mut self) {
         self.curr_character = self.get_character().unwrap_or('\0');
     }
@@ -177,9 +185,10 @@ impl<'a> Lexer<'a> {
         &mut self,
         intermediate_token: IntermediateToken,
     ) -> Result<Token, LexerError> {
-        let new_token = Token::check_termination(intermediate_token, &self.curr_character);
+        let new_token = Token::check_termination(intermediate_token, &self.peek());
         match new_token {
-            IntermediateToken::Finish(composite_token) => {
+            IntermediateToken::FinishExclusive(composite_token) => Ok(Token::from(composite_token)),
+            IntermediateToken::FinishInclusive(composite_token) => {
                 self.advance();
                 Ok(Token::from(composite_token))
             }
@@ -193,17 +202,11 @@ impl<'a> Lexer<'a> {
 
     fn get_token(&mut self) -> Result<Option<Token>, LexerError> {
         match Token::check_single(&self.curr_character) {
-            Some(SingleOrComposable::Single(single_token)) => {
-                self.advance();
-                Ok(Some(Token::from(single_token)))
-            }
+            Some(SingleOrComposable::Single(single_token)) => Ok(Some(Token::from(single_token))),
             Some(SingleOrComposable::Composable(composable_token)) => Ok(Some(
                 self.build_composite_token(IntermediateToken::Continue(composable_token))?,
             )),
-            None => {
-                self.advance();
-                Ok(None)
-            }
+            None => Ok(None),
         }
     }
 }
