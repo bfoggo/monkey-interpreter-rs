@@ -3,7 +3,6 @@ use crate::lexer::Token;
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
-
 #[derive(Debug, PartialEq, Clone)]
 struct PrefixExpression {
     operator: Token,
@@ -56,7 +55,6 @@ impl From<InfixExpression> for Expression {
     }
 }
 
-
 #[derive(Debug, PartialEq, Clone)]
 struct LetStatement {
     token: Token,
@@ -84,15 +82,21 @@ enum Statement {
 pub struct Program {
     statements: Vec<Statement>,
 }
-struct Parser {
+struct Parser<'a> {
     tokens: Peekable<IntoIter<Token>>,
+    curr_token: Option<&'a Token>,
 }
 
-impl Parser {
-    fn new(tokens: Vec<Token>) -> Parser {
+impl<'a> Parser<'a> {
+    fn new(tokens: Vec<Token>) -> Parser<'a> {
         Parser {
             tokens: tokens.into_iter().peekable(),
+            curr_token: None,
         }
+    }
+
+    fn advance(&mut self) {
+        self.curr_token = self.tokens.next().as_ref();
     }
 
     fn parse(&mut self) -> Result<Program, ParserError> {
@@ -122,18 +126,18 @@ impl Parser {
     }
 
     fn parse_let_statement(&mut self) -> Result<LetStatement, LetStatementError> {
-        self.tokens.next().unwrap();
+        self.advance();
         let next_token = self.tokens.peek().unwrap().clone();
         if !matches!(next_token, Token::IDENT(_)) {
             return Err(LetStatementError::NoIdentifier);
         } else {
-            self.tokens.next().unwrap();
+            self.advance();
         }
         let check_eq_sign = self.tokens.peek().unwrap();
         if !matches!(check_eq_sign, Token::EQ) {
             return Err(LetStatementError::NoEqualSign);
         } else {
-            self.tokens.next().unwrap();
+            self.advance();
         }
         let value = self.parse_expression()?;
         if value.is_none() {
@@ -146,32 +150,36 @@ impl Parser {
     }
 
     fn parse_return_statement(&mut self) -> Result<ReturnStatement, ExpressionError> {
-        let token = self.tokens.next().unwrap();
+        self.advance();
         let value = self.parse_expression()?;
         if value.is_none() {
             return Err(ExpressionError::InvalidExpression);
         }
-        Ok(ReturnStatement { value: value.unwrap() })
+        Ok(ReturnStatement {
+            value: value.unwrap(),
+        })
     }
 
     fn parse_expression_statement(&mut self) -> Result<ExpressionStatement, ExpressionError> {
-        let token = self.tokens.next().unwrap();
+        self.advance();
         let expression = self.parse_expression()?;
         if expression.is_none() {
             return Err(ExpressionError::InvalidExpression);
         }
-        Ok(ExpressionStatement { expression: expression.unwrap() })
+        Ok(ExpressionStatement {
+            expression: expression.unwrap(),
+        })
     }
 
     fn parse_expression(&mut self) -> Result<Option<Expression>, ExpressionError> {
-        let token = &self.tokens.next().unwrap();
+        self.advance();
         let left: Expression;
-        if let Some(precedence) = prefix_precedence(token) {
+        if let Some(precedence) = prefix_precedence(self.curr_token.unwrap()) {
             let left = Expression::from(self.parse_prefix_expression()?);
         } else {
             return Err(ExpressionError::InvalidExpression);
         }
-        while let Some(token) = self.tokens.peek() && !match!(token::SEMICOLON) {
+        while let Some(token) = self.tokens.peek() {
             if let Some(precedence) = infix_precedence(token) {
                 let operator = self.tokens.next().unwrap();
                 let right = self.parse_expression()?;
@@ -181,7 +189,7 @@ impl Parser {
                     right: Box::new(right),
                 });
             } else {
-                break;
+                return Ok(None);
             }
         }
     }
