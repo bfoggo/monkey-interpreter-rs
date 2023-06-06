@@ -197,23 +197,21 @@ impl<'a> Parser<'a> {
         if let Some(precedence) = prefix_precedence(self.curr_token.unwrap()) {
             let left = Expression::from(self.parse_prefix_expression()?);
         } else {
-            if matches!(self.curr_token, Some(Token::SEMICOLON) | Some(Token::NEWLINE) | None) {
+            if matches!(self.tokens.peek(), Some(Token::SEMICOLON) | Some(Token::NEWLINE) | None) {
                     Ok(None);
                 }
-            while let Some(token) = self.tokens.peek() {
-                if let Some(precedence) = infix_precedence(token) {
-                    let operator = self.tokens.next().unwrap();
-                    let right = self.parse_expression()?;
-                    left = Expression::from(InfixExpression {
-                        left: Box::new(left),
-                        operator,
-                        right: Box::new(right),
-                    });
-                } else {
-                    return Ok(None);
-                }
+            if let Some(precedence) = infix_precedence(self.tokens.peek().unwrap()) {
+                self.advance();
+                let right = self.parse_expression()?;
+                left = Expression::from(InfixExpression {
+                    left: Box::new(left),
+                    operator: self.curr_token.unwrap().clone(),
+                    right: Box::new(right),
+                });
+            } else {
+                return Ok(None);
             }
-        }
+            }
         Ok(Some(left))
     }
 
