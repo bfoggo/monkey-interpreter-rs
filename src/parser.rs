@@ -224,9 +224,10 @@ impl Parser {
         if let Some(_) = literal_precedence(self.curr_token.as_ref().unwrap()) {
             return Ok(PrefixExpression::from(self.parse_literal_expression()?));
         }
+        let token = self.curr_token.clone().unwrap();
         let right = self.parse_expression()?;
         Ok(PrefixExpression {
-            token: self.curr_token.clone().unwrap(),
+            token,
             right: Box::new(right),
         })
     }
@@ -235,11 +236,11 @@ impl Parser {
         &mut self,
         left: Expression,
     ) -> Result<InfixExpression, ExpressionError> {
-        let operator = self.curr_token.clone().unwrap();
+        let token = self.curr_token.clone().unwrap();
         let right = self.parse_expression()?;
         Ok(InfixExpression {
             left: Box::new(left),
-            token: operator,
+            token,
             right: Box::new(right),
         })
     }
