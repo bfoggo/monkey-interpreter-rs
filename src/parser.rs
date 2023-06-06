@@ -18,14 +18,14 @@ fn literal_precedence(token: &Token) -> Option<u8> {
 
 #[derive(Debug, PartialEq, Clone)]
 struct PrefixExpression {
-    operator: Token,
+    token: Token,
     right: Box<Option<Expression>>,
 }
 
 impl From<LiteralExpression> for PrefixExpression {
     fn from(literal: LiteralExpression) -> Self {
         PrefixExpression {
-            operator: literal.token,
+            token: literal.token,
             right: Box::new(None),
         }
     }
@@ -44,7 +44,7 @@ fn prefix_precedence(token: &Token) -> Option<u8> {
 #[derive(Debug, PartialEq, Clone)]
 struct InfixExpression {
     left: Box<Expression>,
-    operator: Token,
+    token: Token,
     right: Box<Option<Expression>>,
 }
 
@@ -226,7 +226,7 @@ impl Parser {
         }
         let right = self.parse_expression()?;
         Ok(PrefixExpression {
-            operator: self.curr_token.clone().unwrap(),
+            token: self.curr_token.clone().unwrap(),
             right: Box::new(right),
         })
     }
@@ -239,7 +239,7 @@ impl Parser {
         let right = self.parse_expression()?;
         Ok(InfixExpression {
             left: Box::new(left),
-            operator,
+            token: operator,
             right: Box::new(right),
         })
     }
