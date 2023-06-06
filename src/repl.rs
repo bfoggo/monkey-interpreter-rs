@@ -10,7 +10,7 @@ pub fn repl(prompt: &'static str) -> io::Result<()> {
         io::stdin().read_line(&mut buffer)?;
         let tokens = lex(&buffer).unwrap();
         println!("{:?}", tokens);
-        let program = parse(tokens).unwrap();
+        let program = parse(tokens);
         println!("{:?}", program);
     }
 }
