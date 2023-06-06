@@ -194,7 +194,7 @@ impl Parser {
     fn parse_expression(&mut self) -> Result<Option<Expression>, ExpressionError> {
         self.advance();
         let mut left: Expression;
-        if let Some(precedence) = prefix_precedence(&self.curr_token.as_ref().unwrap()) {
+        if let Some(_) = prefix_precedence(&self.curr_token.as_ref().unwrap()) {
             left = Expression::from(self.parse_prefix_expression()?);
         } else {
             return Err(ExpressionError::InvalidExpression);
@@ -205,18 +205,16 @@ impl Parser {
         ) {
             return Ok(None);
         }
-        if let Some(precedence) = infix_precedence(self.tokens.peek().unwrap()) {
+        if let Some(_) = infix_precedence(self.tokens.peek().unwrap()) {
             self.advance();
             let right = self.parse_expression()?;
-            left = Expression::from(InfixExpression {
-                left: Box::new(left),
-                operator: self.curr_token.clone().unwrap(),
-                right: Box::new(right),
-            });
+            if right.is_none() {
+                return Err(ExpressionError::InvalidExpression);
+            }
+            Ok(Some(Expression::from(self.parse_infix_expression(left)?)))
         } else {
             return Ok(None);
         }
-        Ok(Some(left))
     }
 
     fn parse_literal_expression(&mut self) -> Result<LiteralExpression, ExpressionError> {
