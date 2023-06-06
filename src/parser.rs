@@ -4,15 +4,35 @@ use std::iter::Peekable;
 use std::vec::IntoIter;
 
 #[derive(Debug, PartialEq, Clone)]
+struct LiteralExpression {
+    token: Token,
+}
+
+fn literal_precedence(token: &Token) -> Option<u8> {
+    match token {
+        Token::NUMBER(_) => Some(0),
+        Token::IDENT(_) => Some(0),
+        _ => None,
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 struct PrefixExpression {
     operator: Token,
     right: Box<Option<Expression>>,
 }
 
+impl From<LiteralExpression> for PrefixExpression {
+    fn from(literal: LiteralExpression) -> Self {
+        PrefixExpression {
+            operator: literal.token,
+            right: Box::new(None),
+        }
+    }
+}
+
 fn prefix_precedence(token: &Token) -> Option<u8> {
     match token {
-        Token::NUMBER(_) => Some(0),
-        Token::IDENT(_) => Some(0),
         Token::NOT => Some(3),
         Token::MINUS => Some(3),
         _ => None,
@@ -23,7 +43,7 @@ fn prefix_precedence(token: &Token) -> Option<u8> {
 struct InfixExpression {
     left: Box<Expression>,
     operator: Token,
-    right: Box<Expression>,
+    right: Box<Option<Expression>>,
 }
 
 fn infix_precedence(token: &Token) -> Option<u8> {
@@ -177,31 +197,50 @@ impl<'a> Parser<'a> {
         if let Some(precedence) = prefix_precedence(self.curr_token.unwrap()) {
             let left = Expression::from(self.parse_prefix_expression()?);
         } else {
-            return Err(ExpressionError::InvalidExpression);
-        }
-        while let Some(token) = self.tokens.peek() {
-            if let Some(precedence) = infix_precedence(token) {
-                let operator = self.tokens.next().unwrap();
-                let right = self.parse_expression()?;
-                left = Expression::from(InfixExpression {
-                    left: Box::new(left),
-                    operator,
-                    right: Box::new(right),
-                });
-            } else {
-                return Ok(None);
+            if matches!(self.curr_token, Some(Token::SEMICOLON) | Some(Token::NEWLINE) | None) {
+                    Ok(None);
+                }
+            while let Some(token) = self.tokens.peek() {
+                if let Some(precedence) = infix_precedence(token) {
+                    let operator = self.tokens.next().unwrap();
+                    let right = self.parse_expression()?;
+                    left = Expression::from(InfixExpression {
+                        left: Box::new(left),
+                        operator,
+                        right: Box::new(right),
+                    });
+                } else {
+                    return Ok(None);
+                }
             }
         }
+        Ok(Some(left))
+    }
+
+    fn parse_literal_expression(&mut self) -> Result<LiteralExpression, ExpressionError> {
+        Ok(LiteralExpression {
+            token: self.curr_token.unwrap().clone(),
+        })
     }
 
     fn parse_prefix_expression(&mut self) -> Result<PrefixExpression, ExpressionError> {
-        let operator = self.tokens.next().unwrap();
+        if let Some(precedence) = literal_precedence(self.curr_token.unwrap()) {
+            return Ok(PrefixExpression::from(self.parse_literal_expression()));
+        }
         let right = self.parse_expression()?;
         Ok(PrefixExpression {
-            operator,
+            operator: self.curr_token.unwrap().clone(),
             right: Box::new(right),
         })
     }
+
+    fn parse_infix_expression(&mut self, left: Expression) -> Result<InfixExpression, ExpressionError> {
+        let right = self.parse_expression()?;
+        Ok(InfixExpression {
+            left: Box::new(left),
+            operator: self.curr_token.unwrap().clone(),
+            right: Box::new(right),
+        })
 }
 
 pub fn parse(tokens: Vec<Token>) -> Result<Program, ParserError> {
