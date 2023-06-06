@@ -193,27 +193,28 @@ impl Parser {
 
     fn parse_expression(&mut self) -> Result<Option<Expression>, ExpressionError> {
         self.advance();
-        let left: Expression;
+        let mut left: Expression;
         if let Some(precedence) = prefix_precedence(&self.curr_token.as_ref().unwrap()) {
-            let left = Expression::from(self.parse_prefix_expression()?);
+            left = Expression::from(self.parse_prefix_expression()?);
         } else {
-            if matches!(
-                self.tokens.peek(),
-                Some(Token::SEMICOLON) | Some(Token::NEWLINE) | None
-            ) {
-                return Ok(None);
-            }
-            if let Some(precedence) = infix_precedence(self.tokens.peek().unwrap()) {
-                self.advance();
-                let right = self.parse_expression()?;
-                left = Expression::from(InfixExpression {
-                    left: Box::new(left),
-                    operator: self.curr_token.clone().unwrap(),
-                    right: Box::new(right),
-                });
-            } else {
-                return Ok(None);
-            }
+            return Err(ExpressionError::InvalidExpression);
+        }
+        if matches!(
+            self.tokens.peek(),
+            Some(Token::SEMICOLON) | Some(Token::NEWLINE) | None
+        ) {
+            return Ok(None);
+        }
+        if let Some(precedence) = infix_precedence(self.tokens.peek().unwrap()) {
+            self.advance();
+            let right = self.parse_expression()?;
+            left = Expression::from(InfixExpression {
+                left: Box::new(left),
+                operator: self.curr_token.clone().unwrap(),
+                right: Box::new(right),
+            });
+        } else {
+            return Ok(None);
         }
         Ok(Some(left))
     }
