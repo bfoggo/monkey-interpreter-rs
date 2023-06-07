@@ -161,7 +161,7 @@ impl Parser {
         } else {
             self.advance();
         }
-        let value = self.parse_expression()?;
+        let value = self.parse_expression(0)?;
         if value.is_none() {
             return Err(LetStatementError::NoValue);
         }
@@ -173,7 +173,7 @@ impl Parser {
 
     fn parse_return_statement(&mut self) -> Result<ReturnStatement, ExpressionError> {
         self.advance();
-        let value = self.parse_expression()?;
+        let value = self.parse_expression(0)?;
         if value.is_none() {
             return Err(ExpressionError::InvalidExpression);
         }
@@ -183,7 +183,7 @@ impl Parser {
     }
 
     fn parse_expression_statement(&mut self) -> Result<ExpressionStatement, ExpressionError> {
-        let expression = self.parse_expression()?;
+        let expression = self.parse_expression(0)?;
         if expression.is_none() {
             return Err(ExpressionError::InvalidExpression);
         }
@@ -192,7 +192,7 @@ impl Parser {
         })
     }
 
-    fn parse_expression(&mut self) -> Result<Option<Expression>, ExpressionError> {
+    fn parse_expression(&mut self, precedence: u8) -> Result<Option<Expression>, ExpressionError> {
         self.advance();
         let left: Expression;
         if let Some(_) = prefix_precedence(self.curr_token.as_ref().unwrap()) {
@@ -203,14 +203,19 @@ impl Parser {
         if matches!(
             self.tokens.peek(),
             Some(Token::SEMICOLON) | Some(Token::NEWLINE) | None
-        ) {
+        ) || infix_precedence(self.tokens.peek().unwrap()).is_none()
+        {
             return Ok(Some(left));
         }
-        if let Some(_) = infix_precedence(self.tokens.peek().unwrap()) {
-            self.advance();
-            Ok(Some(Expression::from(self.parse_infix_expression(left)?)))
-        } else {
-            return Ok(None);
+        loop {
+            let next_precedance = infix_precedence(self.tokens.peek().unwrap()).unwrap();
+            if next_precedance <= precedence {
+                return Ok(Some(left));
+            } else {
+                return Ok(Some(Expression::from(
+                    self.parse_infix_expression(left, next_precedance)?,
+                )));
+            }
         }
     }
 
@@ -225,7 +230,7 @@ impl Parser {
             return Ok(PrefixExpression::from(self.parse_literal_expression()?));
         }
         let token = self.curr_token.clone().unwrap();
-        let right = self.parse_expression()?;
+        let right = self.parse_expression(0)?;
         Ok(PrefixExpression {
             token,
             right: Box::new(right),
@@ -235,9 +240,10 @@ impl Parser {
     fn parse_infix_expression(
         &mut self,
         left: Expression,
+        precedence: u8,
     ) -> Result<InfixExpression, ExpressionError> {
         let token = self.curr_token.clone().unwrap();
-        let right = self.parse_expression()?;
+        let right = self.parse_expression(precedence)?;
         Ok(InfixExpression {
             left: Box::new(left),
             token,
