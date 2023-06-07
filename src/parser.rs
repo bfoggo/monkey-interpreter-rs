@@ -10,6 +10,8 @@ struct LiteralExpression {
 
 fn literal_precedence(token: &Token) -> Option<u8> {
     match token {
+        Token::TRUE => Some(0),
+        Token::FALSE => Some(0),
         Token::NUMBER(_) => Some(0),
         Token::IDENT(_) => Some(0),
         _ => None,
@@ -33,8 +35,7 @@ impl From<LiteralExpression> for PrefixExpression {
 
 fn prefix_precedence(token: &Token) -> Option<u8> {
     match token {
-        Token::IDENT(_) => Some(0),
-        Token::NUMBER(_) => Some(0),
+        _ if literal_precedence(token).is_some() => Some(0),
         Token::NOT => Some(3),
         Token::MINUS => Some(3),
         _ => None,
