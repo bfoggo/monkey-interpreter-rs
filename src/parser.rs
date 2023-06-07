@@ -213,7 +213,6 @@ impl Parser {
 
     fn parse_expression(&mut self, precedence: u8) -> Result<Option<Expression>, ExpressionError> {
         self.advance();
-        println!("{:?}", self.curr_token);
         let mut left: Expression;
         if let Some(_) = prefix_precedence(self.curr_token.as_ref().unwrap()) {
             left = Expression::from(self.parse_prefix_expression()?);
@@ -223,7 +222,6 @@ impl Parser {
             return Err(ExpressionError::InvalidExpression(self.curr_token.clone()));
         }
         loop {
-            println!("{:?}", self.tokens.peek());
             if matches!(
                 self.tokens.peek(),
                 Some(Token::SEMICOLON) | Some(Token::NEWLINE) | Some(Token::RPAREN) | None
