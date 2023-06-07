@@ -19,6 +19,18 @@ fn literal_precedence(token: &Token) -> Option<u8> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+struct GroupedExpression {
+    expression: Box<Option<Expression>>,
+}
+
+fn grouped_precedence(token: &Token) -> Option<u8> {
+    match token {
+        Token::LPAREN => Some(0),
+        _ => None,
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 struct PrefixExpression {
     token: Token,
     right: Box<Option<Expression>>,
@@ -65,6 +77,7 @@ fn infix_precedence(token: &Token) -> Option<u8> {
 enum Expression {
     PrefixExpression(PrefixExpression),
     InfixExpression(InfixExpression),
+    GroupedExpression(GroupedExpression),
 }
 
 impl From<PrefixExpression> for Expression {
@@ -75,6 +88,11 @@ impl From<PrefixExpression> for Expression {
 impl From<InfixExpression> for Expression {
     fn from(infix: InfixExpression) -> Self {
         Expression::InfixExpression(infix)
+    }
+}
+impl From<GroupedExpression> for Expression {
+    fn from(grouped: GroupedExpression) -> Self {
+        Expression::GroupedExpression(grouped)
     }
 }
 
@@ -176,7 +194,7 @@ impl Parser {
         self.advance();
         let value = self.parse_expression(0)?;
         if value.is_none() {
-            return Err(ExpressionError::InvalidExpression);
+            return Err(ExpressionError::InvalidExpression(None));
         }
         Ok(ReturnStatement {
             value: value.unwrap(),
@@ -186,7 +204,7 @@ impl Parser {
     fn parse_expression_statement(&mut self) -> Result<ExpressionStatement, ExpressionError> {
         let expression = self.parse_expression(0)?;
         if expression.is_none() {
-            return Err(ExpressionError::InvalidExpression);
+            return Err(ExpressionError::InvalidExpression(None));
         }
         Ok(ExpressionStatement {
             expression: expression.unwrap(),
@@ -198,15 +216,18 @@ impl Parser {
         let mut left: Expression;
         if let Some(_) = prefix_precedence(self.curr_token.as_ref().unwrap()) {
             left = Expression::from(self.parse_prefix_expression()?);
+        } else if let Some(_) = grouped_precedence(self.curr_token.as_ref().unwrap()) {
+            left = Expression::from(self.parse_grouped_expression()?);
         } else {
-            return Err(ExpressionError::InvalidExpression);
+            return Err(ExpressionError::InvalidExpression(self.curr_token.clone()));
         }
         loop {
             if matches!(
                 self.tokens.peek(),
-                Some(Token::SEMICOLON) | Some(Token::NEWLINE) | None
+                Some(Token::SEMICOLON) | Some(Token::NEWLINE) | Some(Token::RPAREN) | None
             ) || infix_precedence(self.tokens.peek().unwrap()).is_none()
             {
+                self.advance();
                 return Ok(Some(left));
             }
             let next_precedance = infix_precedence(self.tokens.peek().unwrap()).unwrap();
@@ -248,6 +269,13 @@ impl Parser {
             left: Box::new(left),
             token,
             right: Box::new(right),
+        })
+    }
+
+    fn parse_grouped_expression(&mut self) -> Result<GroupedExpression, ExpressionError> {
+        let expression = self.parse_expression(0)?;
+        Ok(GroupedExpression {
+            expression: Box::new(expression),
         })
     }
 }

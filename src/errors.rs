@@ -1,3 +1,4 @@
+use crate::lexer::Token;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -5,8 +6,8 @@ pub enum LexerError {}
 
 #[derive(Debug, Error)]
 pub enum ExpressionError {
-    #[error("Invalid expression")]
-    InvalidExpression,
+    #[error("Invalid expression at token: {0:?}")]
+    InvalidExpression(Option<Token>),
 }
 
 #[derive(Debug, Error)]
@@ -22,7 +23,7 @@ pub enum LetStatementError {
 impl From<ExpressionError> for LetStatementError {
     fn from(error: ExpressionError) -> Self {
         match error {
-            ExpressionError::InvalidExpression => LetStatementError::NoValue,
+            ExpressionError::InvalidExpression(_) => LetStatementError::NoValue,
         }
     }
 }
