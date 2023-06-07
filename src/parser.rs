@@ -1,4 +1,4 @@
-use crate::errors::{ExpressionError, LetStatementError, ParserError, UndefinedBehaviorError};
+use crate::errors::{ExpressionError, LetStatementError, ParserError};
 use crate::lexer::Token;
 use std::iter::Peekable;
 use std::vec::IntoIter;
