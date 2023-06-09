@@ -3,31 +3,110 @@ use crate::lexer::Token;
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
+trait SelfParsableExpressionTrait {
+    fn parse(parser: &mut Parser) -> Result<Expression, ExpressionError>;
+}
+
+trait PrerequisiteParsableExpressionTrait {
+    fn precedence(token: &Token) -> Option<u8>;
+    fn parse(left: Expression, parser: &mut Parser) -> Result<Expression, ExpressionError>;
+}
+
+enum SelfParsableExpression {
+    Literal(LiteralParser),
+    Prefix(PrefixParser),
+    Grouped(GroupedParser),
+}
+
+struct LiteralParser;
+impl SelfParsableExpressionTrait for LiteralParser {
+    fn parse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        let token = parser.curr_token.clone().unwrap();
+        let literal_expression = LiteralExpression { token };
+        Ok(Expression::Literal(literal_expression))
+    }
+}
+
+struct PrefixParser;
+impl SelfParsableExpressionTrait for PrefixParser {
+    fn parse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        let token = parser.curr_token.clone().unwrap();
+        let right = parser.parse_expression(0)?;
+        let prefix_expression = PrefixExpression {
+            token,
+            right: Box::new(right),
+        };
+        Ok(Expression::Prefix(prefix_expression))
+    }
+}
+
+struct GroupedParser;
+impl SelfParsableExpressionTrait for GroupedParser {
+    fn parse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        let expression = parser.parse_expression(0)?;
+        let grouped_expression = GroupedExpression {
+            expression: Box::new(expression),
+        };
+        Ok(Expression::Grouped(grouped_expression))
+    }
+}
+
+impl PrerequisiteParsableExpressionTrait for GroupedParser {
+    fn precedence(token: &Token) -> Option<u8> {
+        match token {
+            Token::LPAREN => Some(0),
+            _ => None,
+        }
+    }
+    fn parse(left: Expression, parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        let token = parser.curr_token.clone().unwrap();
+        let right = parser.parse_expression(0)?;
+        let infix_expression = InfixExpression {
+            left: Box::new(left),
+            token,
+            right: Box::new(right),
+        };
+        Ok(Expression::InfixExpression(infix_expression))
+    }
+}
+
+fn map_token_to_self_parsable_expression(token: &Token) -> Option<SelfParsableExpression> {
+    match token {
+        Token::TRUE | Token::FALSE | Token::NUMBER(_) | Token::IDENT(_) => {
+            Some(SelfParsableExpression::Literal(LiteralParser))
+        }
+        Token::NOT | Token::MINUS => Some(SelfParsableExpression::Prefix(PrefixParser)),
+        Token::LPAREN => Some(SelfParsableExpression::Grouped(GroupedParser)),
+        _ => None,
+    }
+}
+
+impl SelfParsableExpression {
+    fn parse(&self, parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        match self {
+            SelfParsableExpression::Literal(_) => LiteralParser::parse(parser),
+            SelfParsableExpression::Prefix(expr) => PrefixParser::parse(parser),
+            SelfParsableExpression::Grouped(expr) => GroupedParser::parse(parser),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+enum PrerequisiteParsableExpression {
+    Infix(InfixExpression),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+enum Expression {
+    Literal(LiteralExpression),
+    Prefix(PrefixExpression),
+    Grouped(GroupedExpression),
+    InfixExpression(InfixExpression),
+}
+
 #[derive(Debug, PartialEq, Clone)]
 struct LiteralExpression {
     token: Token,
-}
-
-fn literal_precedence(token: &Token) -> Option<u8> {
-    match token {
-        Token::TRUE => Some(0),
-        Token::FALSE => Some(0),
-        Token::NUMBER(_) => Some(0),
-        Token::IDENT(_) => Some(0),
-        _ => None,
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-struct GroupedExpression {
-    expression: Box<Option<Expression>>,
-}
-
-fn grouped_precedence(token: &Token) -> Option<u8> {
-    match token {
-        Token::LPAREN => Some(0),
-        _ => None,
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -36,22 +115,9 @@ struct PrefixExpression {
     right: Box<Option<Expression>>,
 }
 
-impl From<LiteralExpression> for PrefixExpression {
-    fn from(literal: LiteralExpression) -> Self {
-        PrefixExpression {
-            token: literal.token,
-            right: Box::new(None),
-        }
-    }
-}
-
-fn prefix_precedence(token: &Token) -> Option<u8> {
-    match token {
-        _ if literal_precedence(token).is_some() => Some(0),
-        Token::NOT => Some(3),
-        Token::MINUS => Some(3),
-        _ => None,
-    }
+#[derive(Debug, PartialEq, Clone)]
+struct GroupedExpression {
+    expression: Box<Option<Expression>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -61,38 +127,27 @@ struct InfixExpression {
     right: Box<Option<Expression>>,
 }
 
-fn infix_precedence(token: &Token) -> Option<u8> {
-    match token {
-        Token::EQ => Some(0),
-        Token::EQEQ => Some(0),
-        Token::PLUS => Some(1),
-        Token::MINUS => Some(1),
-        Token::ASTERISK => Some(2),
-        Token::SLASH => Some(2),
-        _ => None,
+impl PrerequisiteParsableExpressionTrait for InfixExpression {
+    fn precedence(token: &Token) -> Option<u8> {
+        match token {
+            Token::EQ => Some(0),
+            Token::EQEQ => Some(0),
+            Token::PLUS => Some(1),
+            Token::MINUS => Some(1),
+            Token::ASTERISK => Some(2),
+            Token::SLASH => Some(2),
+            _ => None,
+        }
     }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-enum Expression {
-    PrefixExpression(PrefixExpression),
-    InfixExpression(InfixExpression),
-    GroupedExpression(GroupedExpression),
-}
-
-impl From<PrefixExpression> for Expression {
-    fn from(prefix: PrefixExpression) -> Self {
-        Expression::PrefixExpression(prefix)
-    }
-}
-impl From<InfixExpression> for Expression {
-    fn from(infix: InfixExpression) -> Self {
-        Expression::InfixExpression(infix)
-    }
-}
-impl From<GroupedExpression> for Expression {
-    fn from(grouped: GroupedExpression) -> Self {
-        Expression::GroupedExpression(grouped)
+    fn parse(left: Expression, parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        let token = parser.curr_token.clone().unwrap();
+        let right = parser.parse_expression(0)?;
+        let infix_expression = InfixExpression {
+            left: Box::new(left),
+            token,
+            right: Box::new(right),
+        };
+        Ok(Expression::InfixExpression(infix_expression))
     }
 }
 
@@ -214,12 +269,8 @@ impl Parser {
     fn parse_expression(&mut self, precedence: u8) -> Result<Option<Expression>, ExpressionError> {
         self.advance();
         let mut left: Expression;
-        if let Some(_) = prefix_precedence(self.curr_token.as_ref().unwrap()) {
-            left = Expression::from(self.parse_prefix_expression()?);
-        } else if let Some(_) = grouped_precedence(self.curr_token.as_ref().unwrap()) {
-            left = Expression::from(self.parse_grouped_expression()?);
-        } else {
-            return Err(ExpressionError::InvalidExpression(self.curr_token.clone()));
+        if let Some(expr) = map_token_to_self_parsable_expression(&self.curr_token.unwrap()) {
+            left = expr.parse(self)?;
         }
         loop {
             if matches!(
@@ -240,46 +291,6 @@ impl Parser {
                 }
             }
         }
-    }
-
-    fn parse_literal_expression(&mut self) -> Result<LiteralExpression, ExpressionError> {
-        Ok(LiteralExpression {
-            token: self.curr_token.clone().unwrap(),
-        })
-    }
-
-    fn parse_prefix_expression(&mut self) -> Result<PrefixExpression, ExpressionError> {
-        if let Some(_) = literal_precedence(self.curr_token.as_ref().unwrap()) {
-            return Ok(PrefixExpression::from(self.parse_literal_expression()?));
-        }
-        let token = self.curr_token.clone().unwrap();
-        let right = self.parse_expression(0)?;
-        Ok(PrefixExpression {
-            token,
-            right: Box::new(right),
-        })
-    }
-
-    fn parse_infix_expression(
-        &mut self,
-        left: Expression,
-        precedence: u8,
-    ) -> Result<InfixExpression, ExpressionError> {
-        self.advance();
-        let token = self.curr_token.clone().unwrap();
-        let right = self.parse_expression(precedence)?;
-        Ok(InfixExpression {
-            left: Box::new(left),
-            token,
-            right: Box::new(right),
-        })
-    }
-
-    fn parse_grouped_expression(&mut self) -> Result<GroupedExpression, ExpressionError> {
-        let expression = self.parse_expression(0)?;
-        Ok(GroupedExpression {
-            expression: Box::new(expression),
-        })
     }
 }
 
