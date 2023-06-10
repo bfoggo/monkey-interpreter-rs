@@ -4,7 +4,9 @@ use expressions::{
     map_token_to_left_parsable_expression, map_token_to_parsable_expression, Expression,
 };
 
-use crate::errors::{ExpressionError, LetStatementError, ParserError};
+use crate::errors::{
+    ExpressionError, IfStatementError, LetStatementError, ParserError, ReturnStatementError,
+};
 use crate::lexer::Token;
 use std::iter::Peekable;
 use std::vec::IntoIter;
@@ -26,10 +28,18 @@ struct ExpressionStatement {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+struct IfStatement {
+    condition: Expression,
+    consequence: Expression,
+    alternative: Option<Expression>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 enum Statement {
     Let(LetStatement),
     Return(ReturnStatement),
     Expression(ExpressionStatement),
+    If(IfStatement),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -70,6 +80,10 @@ impl Parser {
                 Token::NEWLINE | Token::SEMICOLON => {
                     self.tokens.next().unwrap();
                 }
+                Token::IF => {
+                    let statement = self.parse_if_statement()?;
+                    program.statements.push(Statement::If(statement));
+                }
                 _ => {
                     let statement = self.parse_expression_statement()?;
                     program.statements.push(Statement::Expression(statement));
@@ -103,21 +117,48 @@ impl Parser {
         })
     }
 
-    fn parse_return_statement(&mut self) -> Result<ReturnStatement, ExpressionError> {
+    fn parse_return_statement(&mut self) -> Result<ReturnStatement, ReturnStatementError> {
         self.advance();
         let value = self.parse_expression(0)?;
         if value.is_none() {
-            return Err(ExpressionError::InvalidExpression(None));
+            return Err(ReturnStatementError::NoValue);
         }
         Ok(ReturnStatement {
             value: value.unwrap(),
         })
     }
 
+    fn parse_if_statement(&mut self) -> Result<IfStatement, IfStatementError> {
+        self.advance();
+        let condition = self.parse_expression(0)?;
+        if !matches!(condition, Some(Expression::BracketedExpression(_))) {
+            return Err(IfStatementError::NoCondition);
+        }
+        let consequence = self.parse_expression(0)?;
+        if consequence.is_none() {
+            return Err(IfStatementError::NoConsequence);
+        }
+        let mut alternative = None;
+        if matches!(self.tokens.peek(), Some(Token::ELSE)) {
+            self.advance();
+            alternative = self.parse_expression(0)?;
+            if alternative.is_none() {
+                return Err(IfStatementError::NoAlternative);
+            }
+        }
+        Ok(IfStatement {
+            condition: condition.unwrap(),
+            consequence: consequence.unwrap(),
+            alternative,
+        })
+    }
+
     fn parse_expression_statement(&mut self) -> Result<ExpressionStatement, ExpressionError> {
         let expression = self.parse_expression(0)?;
         if expression.is_none() {
-            return Err(ExpressionError::InvalidExpression(None));
+            return Err(ExpressionError::InvalidExpression(
+                "No expression".to_string(),
+            ));
         }
         Ok(ExpressionStatement {
             expression: expression.unwrap(),
