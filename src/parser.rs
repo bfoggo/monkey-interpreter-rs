@@ -17,6 +17,9 @@ enum LeftParsableExpression {
     Prefix(PrefixParser),
     Grouped(GroupedParser),
 }
+enum ParsableExpression {
+    Infix(InfixParser),
+}
 
 struct LiteralParser;
 impl LeftParsable for LiteralParser {
@@ -70,9 +73,29 @@ impl Parsable for GroupedParser {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-enum PrerequisiteParsableExpression {
-    Infix(InfixExpression),
+struct InfixParser;
+impl Parsable for InfixParser {
+    fn precedence(token: &Token) -> Option<u8> {
+        match token {
+            Token::EQ => Some(0),
+            Token::EQEQ => Some(0),
+            Token::PLUS => Some(1),
+            Token::MINUS => Some(1),
+            Token::ASTERISK => Some(2),
+            Token::SLASH => Some(2),
+            _ => None,
+        }
+    }
+    fn parse(left: Expression, parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        let token = parser.curr_token.clone().unwrap();
+        let right = parser.parse_expression(0)?;
+        let infix_expression = InfixExpression {
+            left: Box::new(left),
+            token,
+            right: Box::new(right),
+        };
+        Ok(Expression::InfixExpression(infix_expression))
+    }
 }
 
 fn map_token_to_self_parsable_expression(token: &Token) -> Option<LeftParsableExpression> {
@@ -125,30 +148,6 @@ struct InfixExpression {
     left: Box<Expression>,
     token: Token,
     right: Box<Option<Expression>>,
-}
-
-impl Parsable for InfixExpression {
-    fn precedence(token: &Token) -> Option<u8> {
-        match token {
-            Token::EQ => Some(0),
-            Token::EQEQ => Some(0),
-            Token::PLUS => Some(1),
-            Token::MINUS => Some(1),
-            Token::ASTERISK => Some(2),
-            Token::SLASH => Some(2),
-            _ => None,
-        }
-    }
-    fn parse(left: Expression, parser: &mut Parser) -> Result<Expression, ExpressionError> {
-        let token = parser.curr_token.clone().unwrap();
-        let right = parser.parse_expression(0)?;
-        let infix_expression = InfixExpression {
-            left: Box::new(left),
-            token,
-            right: Box::new(right),
-        };
-        Ok(Expression::InfixExpression(infix_expression))
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
