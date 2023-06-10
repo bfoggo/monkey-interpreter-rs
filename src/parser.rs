@@ -3,24 +3,24 @@ use crate::lexer::Token;
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
-trait SelfParsableExpressionTrait {
-    fn parse(parser: &mut Parser) -> Result<Expression, ExpressionError>;
+trait LeftParsable {
+    fn lparse(parser: &mut Parser) -> Result<Expression, ExpressionError>;
 }
 
-trait PrerequisiteParsableExpressionTrait {
+trait Parsable {
     fn precedence(token: &Token) -> Option<u8>;
     fn parse(left: Expression, parser: &mut Parser) -> Result<Expression, ExpressionError>;
 }
 
-enum SelfParsableExpression {
+enum LeftParsableExpression {
     Literal(LiteralParser),
     Prefix(PrefixParser),
     Grouped(GroupedParser),
 }
 
 struct LiteralParser;
-impl SelfParsableExpressionTrait for LiteralParser {
-    fn parse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
+impl LeftParsable for LiteralParser {
+    fn lparse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
         let token = parser.curr_token.clone().unwrap();
         let literal_expression = LiteralExpression { token };
         Ok(Expression::Literal(literal_expression))
@@ -28,8 +28,8 @@ impl SelfParsableExpressionTrait for LiteralParser {
 }
 
 struct PrefixParser;
-impl SelfParsableExpressionTrait for PrefixParser {
-    fn parse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
+impl LeftParsable for PrefixParser {
+    fn lparse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
         let token = parser.curr_token.clone().unwrap();
         let right = parser.parse_expression(0)?;
         let prefix_expression = PrefixExpression {
@@ -41,8 +41,8 @@ impl SelfParsableExpressionTrait for PrefixParser {
 }
 
 struct GroupedParser;
-impl SelfParsableExpressionTrait for GroupedParser {
-    fn parse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
+impl LeftParsable for GroupedParser {
+    fn lparse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
         let expression = parser.parse_expression(0)?;
         let grouped_expression = GroupedExpression {
             expression: Box::new(expression),
@@ -51,7 +51,7 @@ impl SelfParsableExpressionTrait for GroupedParser {
     }
 }
 
-impl PrerequisiteParsableExpressionTrait for GroupedParser {
+impl Parsable for GroupedParser {
     fn precedence(token: &Token) -> Option<u8> {
         match token {
             Token::LPAREN => Some(0),
@@ -70,30 +70,30 @@ impl PrerequisiteParsableExpressionTrait for GroupedParser {
     }
 }
 
-fn map_token_to_self_parsable_expression(token: &Token) -> Option<SelfParsableExpression> {
+#[derive(Debug, PartialEq, Clone)]
+enum PrerequisiteParsableExpression {
+    Infix(InfixExpression),
+}
+
+fn map_token_to_self_parsable_expression(token: &Token) -> Option<LeftParsableExpression> {
     match token {
         Token::TRUE | Token::FALSE | Token::NUMBER(_) | Token::IDENT(_) => {
-            Some(SelfParsableExpression::Literal(LiteralParser))
+            Some(LeftParsableExpression::Literal(LiteralParser))
         }
-        Token::NOT | Token::MINUS => Some(SelfParsableExpression::Prefix(PrefixParser)),
-        Token::LPAREN => Some(SelfParsableExpression::Grouped(GroupedParser)),
+        Token::NOT | Token::MINUS => Some(LeftParsableExpression::Prefix(PrefixParser)),
+        Token::LPAREN => Some(LeftParsableExpression::Grouped(GroupedParser)),
         _ => None,
     }
 }
 
-impl SelfParsableExpression {
+impl LeftParsableExpression {
     fn parse(&self, parser: &mut Parser) -> Result<Expression, ExpressionError> {
         match self {
-            SelfParsableExpression::Literal(_) => LiteralParser::parse(parser),
-            SelfParsableExpression::Prefix(expr) => PrefixParser::parse(parser),
-            SelfParsableExpression::Grouped(expr) => GroupedParser::parse(parser),
+            LeftParsableExpression::Literal(_) => LiteralParser::lparse(parser),
+            LeftParsableExpression::Prefix(expr) => PrefixParser::lparse(parser),
+            LeftParsableExpression::Grouped(expr) => GroupedParser::lparse(parser),
         }
     }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-enum PrerequisiteParsableExpression {
-    Infix(InfixExpression),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -127,7 +127,7 @@ struct InfixExpression {
     right: Box<Option<Expression>>,
 }
 
-impl PrerequisiteParsableExpressionTrait for InfixExpression {
+impl Parsable for InfixExpression {
     fn precedence(token: &Token) -> Option<u8> {
         match token {
             Token::EQ => Some(0),
