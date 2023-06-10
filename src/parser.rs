@@ -16,6 +16,7 @@ enum LeftParsableExpression {
     Literal(LiteralParser),
     Prefix(PrefixParser),
     Grouped(GroupedParser),
+    Bracketed(BracketedParser),
 }
 
 enum ParsableExpression {
@@ -102,12 +103,31 @@ impl Parsable for InfixParser {
     }
 }
 
+struct BracketedParser;
+
+impl LeftParsable for BracketedParser {
+    fn lparse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        let mut expressions: Vec<Expression> = Vec::new();
+        loop {
+            let expression = parser.parse_expression(0)?;
+            if expression.is_none() {
+                break;
+            }
+            expressions.push(expression.unwrap());
+        }
+        Ok(Expression::BracketedExpression(BracketedExpression {
+            expressions,
+        }))
+    }
+}
+
 impl LeftParsableExpression {
     fn lparse(&self, parser: &mut Parser) -> Result<Expression, ExpressionError> {
         match self {
             LeftParsableExpression::Literal(_) => LiteralParser::lparse(parser),
             LeftParsableExpression::Prefix(_) => PrefixParser::lparse(parser),
             LeftParsableExpression::Grouped(_) => GroupedParser::lparse(parser),
+            LeftParsableExpression::Bracketed(_) => BracketedParser::lparse(parser),
         }
     }
 }
@@ -134,6 +154,7 @@ fn map_token_to_left_parsable_expression(token: &Token) -> Option<LeftParsableEx
         }
         Token::NOT | Token::MINUS => Some(LeftParsableExpression::Prefix(PrefixParser)),
         Token::LPAREN => Some(LeftParsableExpression::Grouped(GroupedParser)),
+        Token::LBRACE => Some(LeftParsableExpression::Bracketed(BracketedParser)),
         _ => None,
     }
 }
@@ -156,6 +177,7 @@ enum Expression {
     Prefix(PrefixExpression),
     Grouped(GroupedExpression),
     InfixExpression(InfixExpression),
+    BracketedExpression(BracketedExpression),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -190,6 +212,11 @@ struct LetStatement {
 #[derive(Debug, PartialEq, Clone)]
 struct ReturnStatement {
     value: Expression,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+struct BracketedExpression {
+    expressions: Vec<Expression>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
