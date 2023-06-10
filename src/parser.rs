@@ -327,6 +327,7 @@ impl Parser {
             if precedence >= next_precedence {
                 return Ok(Some(left));
             } else {
+                self.advance();
                 left = next_expr.parse(left, self)?;
             }
         }
