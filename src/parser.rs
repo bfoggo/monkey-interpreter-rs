@@ -92,7 +92,7 @@ impl Parsable for InfixParser {
     }
     fn parse(left: Expression, parser: &mut Parser) -> Result<Expression, ExpressionError> {
         let token = parser.curr_token.clone().unwrap();
-        let right = parser.parse_expression(0)?;
+        let right = parser.parse_expression(InfixParser::precedence(&token).unwrap())?;
         let infix_expression = InfixExpression {
             left: Box::new(left),
             token,
