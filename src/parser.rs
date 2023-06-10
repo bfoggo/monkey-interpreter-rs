@@ -17,6 +17,7 @@ enum LeftParsableExpression {
     Prefix(PrefixParser),
     Grouped(GroupedParser),
 }
+
 enum ParsableExpression {
     Infix(InfixParser),
     Grouped(GroupedParser),
@@ -44,6 +45,7 @@ impl LeftParsable for PrefixParser {
     }
 }
 
+#[derive(Default)]
 struct GroupedParser;
 impl LeftParsable for GroupedParser {
     fn lparse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
@@ -74,6 +76,7 @@ impl Parsable for GroupedParser {
     }
 }
 
+#[derive(Default)]
 struct InfixParser;
 impl Parsable for InfixParser {
     fn precedence(token: &Token) -> Option<u8> {
@@ -99,7 +102,32 @@ impl Parsable for InfixParser {
     }
 }
 
-fn map_token_to_self_parsable_expression(token: &Token) -> Option<LeftParsableExpression> {
+impl LeftParsableExpression {
+    fn lparse(&self, parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        match self {
+            LeftParsableExpression::Literal(_) => LiteralParser::lparse(parser),
+            LeftParsableExpression::Prefix(_) => PrefixParser::lparse(parser),
+            LeftParsableExpression::Grouped(_) => GroupedParser::lparse(parser),
+        }
+    }
+}
+
+impl ParsableExpression {
+    fn precedence(&self, token: &Token) -> Option<u8> {
+        match self {
+            ParsableExpression::Infix(_) => InfixParser::precedence(token),
+            ParsableExpression::Grouped(_) => GroupedParser::precedence(token),
+        }
+    }
+    fn parse(&self, left: Expression, parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        match self {
+            ParsableExpression::Infix(_) => InfixParser::parse(left, parser),
+            ParsableExpression::Grouped(_) => GroupedParser::parse(left, parser),
+        }
+    }
+}
+
+fn map_token_to_left_parsable_expression(token: &Token) -> Option<LeftParsableExpression> {
     match token {
         Token::TRUE | Token::FALSE | Token::NUMBER(_) | Token::IDENT(_) => {
             Some(LeftParsableExpression::Literal(LiteralParser))
@@ -110,22 +138,15 @@ fn map_token_to_self_parsable_expression(token: &Token) -> Option<LeftParsableEx
     }
 }
 
-impl LeftParsableExpression {
-    fn lparse(&self, parser: &mut Parser) -> Result<Expression, ExpressionError> {
-        match self {
-            LeftParsableExpression::Literal(_) => LiteralParser::lparse(parser),
-            LeftParsableExpression::Prefix(expr) => PrefixParser::lparse(parser),
-            LeftParsableExpression::Grouped(expr) => GroupedParser::lparse(parser),
+fn map_token_to_parsable_expression(token: &Token) -> Option<ParsableExpression> {
+    match token {
+        _ if GroupedParser::precedence(token).is_some() => {
+            Some(ParsableExpression::Grouped(GroupedParser))
         }
-    }
-}
-
-impl ParsableExpression {
-    fn parse(&self, left: Expression, parser: &mut Parser) -> Result<Expression, ExpressionError> {
-        match self {
-            ParsableExpression::Infix(expr) => InfixParser::parse(left, parser),
-            ParsableExpression::Grouped(expr) => GroupedParser::parse(left, parser),
+        _ if InfixParser::precedence(token).is_some() => {
+            Some(ParsableExpression::Infix(InfixParser))
         }
+        _ => None,
     }
 }
 
@@ -278,26 +299,35 @@ impl Parser {
     fn parse_expression(&mut self, precedence: u8) -> Result<Option<Expression>, ExpressionError> {
         self.advance();
         let mut left: Expression;
-        if let Some(expr) = map_token_to_self_parsable_expression(&self.curr_token.unwrap()) {
+        let token = self.curr_token.clone();
+        if token.is_none() {
+            return Ok(None);
+        }
+        if let Some(expr) = map_token_to_left_parsable_expression(&token.unwrap()) {
             left = expr.lparse(self)?;
+        } else {
+            return Ok(None);
         }
         loop {
             if matches!(
                 self.tokens.peek(),
                 Some(Token::SEMICOLON) | Some(Token::NEWLINE) | Some(Token::RPAREN) | None
-            ) || infix_precedence(self.tokens.peek().unwrap()).is_none()
-            {
+            ) {
                 self.advance();
                 return Ok(Some(left));
             }
-            let next_precedance = infix_precedence(self.tokens.peek().unwrap()).unwrap();
-            if next_precedance <= precedence {
+            let next_precedence: u8;
+            let next_expr: ParsableExpression;
+            if let Some(expr) = map_token_to_parsable_expression(&self.tokens.peek().unwrap()) {
+                next_precedence = expr.precedence(&self.tokens.peek().unwrap()).unwrap();
+                next_expr = expr;
+            } else {
+                return Ok(Some(left));
+            }
+            if precedence >= next_precedence {
                 return Ok(Some(left));
             } else {
-                left = Expression::from(self.parse_infix_expression(left, next_precedance)?);
-                if matches!(self.curr_token, Some(Token::RPAREN)) {
-                    return Ok(Some(left));
-                }
+                left = next_expr.parse(left, self)?;
             }
         }
     }
