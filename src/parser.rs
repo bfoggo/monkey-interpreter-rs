@@ -19,6 +19,7 @@ enum LeftParsableExpression {
 }
 enum ParsableExpression {
     Infix(InfixParser),
+    Grouped(GroupedParser),
 }
 
 struct LiteralParser;
@@ -110,11 +111,20 @@ fn map_token_to_self_parsable_expression(token: &Token) -> Option<LeftParsableEx
 }
 
 impl LeftParsableExpression {
-    fn parse(&self, parser: &mut Parser) -> Result<Expression, ExpressionError> {
+    fn lparse(&self, parser: &mut Parser) -> Result<Expression, ExpressionError> {
         match self {
             LeftParsableExpression::Literal(_) => LiteralParser::lparse(parser),
             LeftParsableExpression::Prefix(expr) => PrefixParser::lparse(parser),
             LeftParsableExpression::Grouped(expr) => GroupedParser::lparse(parser),
+        }
+    }
+}
+
+impl ParsableExpression {
+    fn parse(&self, left: Expression, parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        match self {
+            ParsableExpression::Infix(expr) => InfixParser::parse(left, parser),
+            ParsableExpression::Grouped(expr) => GroupedParser::parse(left, parser),
         }
     }
 }
@@ -269,7 +279,7 @@ impl Parser {
         self.advance();
         let mut left: Expression;
         if let Some(expr) = map_token_to_self_parsable_expression(&self.curr_token.unwrap()) {
-            left = expr.parse(self)?;
+            left = expr.lparse(self)?;
         }
         loop {
             if matches!(
