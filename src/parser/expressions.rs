@@ -118,12 +118,12 @@ pub struct InfixParser;
 impl Parsable for InfixParser {
     fn precedence(token: &Token) -> Option<u8> {
         match token {
-            Token::EQ => Some(0),
-            Token::EQEQ => Some(0),
-            Token::PLUS => Some(1),
-            Token::MINUS => Some(1),
-            Token::ASTERISK => Some(2),
-            Token::SLASH => Some(2),
+            Token::EQ => Some(1),
+            Token::EQEQ => Some(1),
+            Token::PLUS => Some(2),
+            Token::MINUS => Some(2),
+            Token::ASTERISK => Some(3),
+            Token::SLASH => Some(3),
             _ => None,
         }
     }
