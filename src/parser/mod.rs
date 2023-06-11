@@ -86,7 +86,12 @@ impl Parser {
                 }
                 _ => {
                     let statement = self.parse_expression_statement()?;
-                    program.statements.push(Statement::Expression(statement));
+                    if statement.is_none() {
+                        continue;
+                    }
+                    program
+                        .statements
+                        .push(Statement::Expression(statement.unwrap()));
                 }
             }
         }
@@ -153,16 +158,16 @@ impl Parser {
         })
     }
 
-    fn parse_expression_statement(&mut self) -> Result<ExpressionStatement, ExpressionError> {
+    fn parse_expression_statement(
+        &mut self,
+    ) -> Result<Option<ExpressionStatement>, ExpressionError> {
         let expression = self.parse_expression(0)?;
         if expression.is_none() {
-            return Err(ExpressionError::InvalidExpression(
-                "No expression".to_string(),
-            ));
+            return Ok(None);
         }
-        Ok(ExpressionStatement {
+        Ok(Some(ExpressionStatement {
             expression: expression.unwrap(),
-        })
+        }))
     }
 
     fn parse_expression(&mut self, precedence: u8) -> Result<Option<Expression>, ExpressionError> {
