@@ -9,6 +9,7 @@ pub enum Expression {
     Grouped(GroupedExpression),
     InfixExpression(InfixExpression),
     BracketedExpression(BracketedExpression),
+    CallExpression(CallExpression),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -37,6 +38,12 @@ pub struct InfixExpression {
 #[derive(Debug, PartialEq, Clone)]
 pub struct BracketedExpression {
     expressions: Vec<Expression>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct CallExpression {
+    function: Box<Expression>,
+    arguments: Box<Option<Expression>>,
 }
 
 pub trait LeftParsable {
@@ -94,25 +101,6 @@ impl LeftParsable for GroupedParser {
     }
 }
 
-impl Parsable for GroupedParser {
-    fn precedence(token: &Token) -> Option<u8> {
-        match token {
-            Token::LPAREN => Some(0),
-            _ => None,
-        }
-    }
-    fn parse(left: Expression, parser: &mut Parser) -> Result<Expression, ExpressionError> {
-        let token = parser.curr_token.clone().unwrap();
-        let right = parser.parse_expression(0)?;
-        let infix_expression = InfixExpression {
-            left: Box::new(left),
-            token,
-            right: Box::new(right),
-        };
-        Ok(Expression::InfixExpression(infix_expression))
-    }
-}
-
 #[derive(Default)]
 pub struct InfixParser;
 impl Parsable for InfixParser {
@@ -154,6 +142,26 @@ impl LeftParsable for BracketedParser {
         Ok(Expression::BracketedExpression(BracketedExpression {
             expressions,
         }))
+    }
+}
+
+pub struct CallParser;
+
+impl Parsable for CallParser {
+    fn precedence(token: &Token) -> Option<u8> {
+        match token {
+            Token::LPAREN => Some(0),
+            _ => None,
+        }
+    }
+    fn parse(left: Expression, parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        let function = left;
+        let arguments = parser.parse_expression(0)?;
+        let call_expression = CallExpression {
+            function: Box::new(function),
+            arguments: Box::new(arguments),
+        };
+        Ok(Expression::CallExpression(call_expression))
     }
 }
 
