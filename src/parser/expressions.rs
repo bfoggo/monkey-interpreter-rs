@@ -150,7 +150,7 @@ pub struct CallParser;
 impl Parsable for CallParser {
     fn precedence(token: &Token) -> Option<u8> {
         match token {
-            Token::LPAREN => Some(0),
+            Token::LPAREN => Some(1),
             _ => None,
         }
     }
