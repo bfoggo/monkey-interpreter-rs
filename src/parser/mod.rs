@@ -12,8 +12,6 @@ use crate::lexer::Token;
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
-use self::expressions::{LeftParsable, LiteralParser};
-
 #[derive(Debug, PartialEq, Clone)]
 struct LetStatement {
     token: Token,
