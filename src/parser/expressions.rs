@@ -64,7 +64,7 @@ pub enum LeftParsableImpl {
 
 pub enum ParsableImpl {
     Infix(InfixParser),
-    Grouped(GroupedParser),
+    Call(CallParser),
 }
 
 pub struct LiteralParser;
@@ -180,7 +180,7 @@ impl ParsableImpl {
     pub fn precedence(&self, token: &Token) -> Option<u8> {
         match self {
             ParsableImpl::Infix(_) => InfixParser::precedence(token),
-            ParsableImpl::Grouped(_) => GroupedParser::precedence(token),
+            ParsableImpl::Call(_) => CallParser::precedence(token),
         }
     }
     pub fn parse(
@@ -190,7 +190,7 @@ impl ParsableImpl {
     ) -> Result<Expression, ExpressionError> {
         match self {
             ParsableImpl::Infix(_) => InfixParser::parse(left, parser),
-            ParsableImpl::Grouped(_) => GroupedParser::parse(left, parser),
+            ParsableImpl::Call(_) => CallParser::parse(left, parser),
         }
     }
 }
@@ -209,9 +209,7 @@ pub fn map_token_to_left_parsable_expression(token: &Token) -> Option<LeftParsab
 
 pub fn map_token_to_parsable_expression(token: &Token) -> Option<ParsableImpl> {
     match token {
-        _ if GroupedParser::precedence(token).is_some() => {
-            Some(ParsableImpl::Grouped(GroupedParser))
-        }
+        _ if CallParser::precedence(token).is_some() => Some(ParsableImpl::Call(CallParser)),
         _ if InfixParser::precedence(token).is_some() => Some(ParsableImpl::Infix(InfixParser)),
         _ => None,
     }
