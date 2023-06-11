@@ -39,6 +39,26 @@ pub enum ReturnStatementError {
     InvalidExpression(ExpressionError),
 }
 
+#[derive(Debug, Error)]
+pub enum FnStatementError {
+    #[error("Fn statements need a name")]
+    NoName,
+    #[error("Fn statements need parameters")]
+    NoParameters,
+    #[error("Fn statements need a body")]
+    NoBody,
+    #[error("Syntax error: {0}")]
+    SyntaxError(String),
+    #[error("Invalid Expression: {0}")]
+    InvalidExpression(ExpressionError),
+}
+
+impl From<ExpressionError> for FnStatementError {
+    fn from(error: ExpressionError) -> Self {
+        FnStatementError::InvalidExpression(error)
+    }
+}
+
 impl From<ExpressionError> for ReturnStatementError {
     fn from(error: ExpressionError) -> Self {
         ReturnStatementError::InvalidExpression(error)
@@ -63,6 +83,8 @@ pub enum ParserError {
     IfStatementError(IfStatementError),
     #[error("Return statement error: {0}")]
     ReturnStatementError(ReturnStatementError),
+    #[error("Fn statement error: {0}")]
+    FnStatementError(FnStatementError),
 }
 
 impl From<LetStatementError> for ParserError {
@@ -92,5 +114,11 @@ impl From<ExpressionError> for IfStatementError {
 impl From<ReturnStatementError> for ParserError {
     fn from(error: ReturnStatementError) -> Self {
         ParserError::ReturnStatementError(error)
+    }
+}
+
+impl From<FnStatementError> for ParserError {
+    fn from(error: FnStatementError) -> Self {
+        ParserError::FnStatementError(error)
     }
 }

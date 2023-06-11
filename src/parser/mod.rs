@@ -5,11 +5,14 @@ use expressions::{
 };
 
 use crate::errors::{
-    ExpressionError, IfStatementError, LetStatementError, ParserError, ReturnStatementError,
+    ExpressionError, FnStatementError, IfStatementError, LetStatementError, ParserError,
+    ReturnStatementError,
 };
 use crate::lexer::Token;
 use std::iter::Peekable;
 use std::vec::IntoIter;
+
+use self::expressions::{LeftParsable, LiteralParser};
 
 #[derive(Debug, PartialEq, Clone)]
 struct LetStatement {
@@ -35,11 +38,19 @@ struct IfStatement {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+struct FnStatement {
+    name: Token,
+    parameters: Vec<Token>,
+    body: Expression,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 enum Statement {
     Let(LetStatement),
     Return(ReturnStatement),
     Expression(ExpressionStatement),
     If(IfStatement),
+    Fn(FnStatement),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -83,6 +94,10 @@ impl Parser {
                 Token::IF => {
                     let statement = self.parse_if_statement()?;
                     program.statements.push(Statement::If(statement));
+                }
+                Token::FN => {
+                    let statement = self.parse_fn_statement()?;
+                    program.statements.push(Statement::Fn(statement));
                 }
                 _ => {
                     let statement = self.parse_expression_statement()?;
@@ -155,6 +170,48 @@ impl Parser {
             condition: condition.unwrap(),
             consequence: consequence.unwrap(),
             alternative,
+        })
+    }
+
+    fn parse_fn_statement(&mut self) -> Result<FnStatement, FnStatementError> {
+        self.advance();
+        if !matches!(self.tokens.peek(), Some(Token::IDENT(_))) {
+            return Err(FnStatementError::NoName);
+        }
+        self.advance();
+        let name = self.curr_token.clone().unwrap();
+        if !matches!(self.tokens.peek(), Some(Token::LPAREN)) {
+            return Err(FnStatementError::NoParameters);
+        }
+        self.advance();
+        let mut parameters: Vec<Token> = Vec::new();
+        loop {
+            if matches!(self.tokens.peek(), Some(Token::IDENT(_))) {
+                self.advance();
+                parameters.push(self.curr_token.clone().unwrap());
+            }
+            if matches!(self.tokens.peek(), Some(Token::RPAREN)) {
+                self.advance();
+                break;
+            }
+            if !matches!(self.tokens.peek(), Some(Token::COMMA)) {
+                return Err(FnStatementError::SyntaxError(
+                    "Function arguments must be separated by a comma".to_string(),
+                ));
+            }
+            self.advance();
+        }
+        if parameters.is_empty() {
+            return Err(FnStatementError::NoParameters);
+        }
+        let body = self.parse_expression(0)?;
+        if body.is_none() || !matches!(&body, Some(Expression::BracketedExpression(_))) {
+            return Err(FnStatementError::NoBody);
+        }
+        Ok(FnStatement {
+            name,
+            parameters,
+            body: body.unwrap(),
         })
     }
 
