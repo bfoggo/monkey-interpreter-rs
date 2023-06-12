@@ -18,6 +18,6 @@ pub fn repl(prompt: &'static str) -> io::Result<()> {
             continue;
         }
         let evaluation = eval(AST::Program(program.unwrap()));
-        println!("{:?}", evaluation);
+        println!("  : {}", evaluation);
     }
 }
