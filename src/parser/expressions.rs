@@ -14,36 +14,36 @@ pub enum Expression {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct LiteralExpression {
-    token: Token,
+    pub token: Token,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PrefixExpression {
-    token: Token,
-    right: Box<Option<Expression>>,
+    pub token: Token,
+    pub right: Box<Option<Expression>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct GroupedExpression {
-    expression: Box<Option<Expression>>,
+    pub expression: Box<Option<Expression>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct InfixExpression {
-    left: Box<Expression>,
-    token: Token,
-    right: Box<Option<Expression>>,
+    pub left: Box<Expression>,
+    pub token: Token,
+    pub right: Box<Option<Expression>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct BracketedExpression {
-    expressions: Vec<Expression>,
+    pub expressions: Vec<Expression>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct CallExpression {
-    function: Box<Expression>,
-    arguments: Box<Option<Expression>>,
+    pub function: Box<Expression>,
+    pub arguments: Box<Option<Expression>>,
 }
 
 pub trait LeftParsable {

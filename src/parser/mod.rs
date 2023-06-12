@@ -13,37 +13,37 @@ use std::iter::Peekable;
 use std::vec::IntoIter;
 
 #[derive(Debug, PartialEq, Clone)]
-struct LetStatement {
+pub struct LetStatement {
     token: Token,
     value: Expression,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct ReturnStatement {
+pub struct ReturnStatement {
     value: Expression,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct ExpressionStatement {
+pub struct ExpressionStatement {
     expression: Expression,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct IfStatement {
+pub struct IfStatement {
     condition: Expression,
     consequence: Expression,
     alternative: Option<Expression>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct FnStatement {
+pub struct FnStatement {
     name: Token,
     parameters: Vec<Token>,
     body: Expression,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-enum Statement {
+pub enum Statement {
     Let(LetStatement),
     Return(ReturnStatement),
     Expression(ExpressionStatement),
@@ -266,4 +266,9 @@ impl Parser {
 pub fn parse(tokens: Vec<Token>) -> Result<Program, ParserError> {
     let mut parser = Parser::new(tokens);
     parser.parse()
+}
+
+pub enum AST {
+    Statement(Statement),
+    Expression(Expression),
 }

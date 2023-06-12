@@ -1,8 +1,8 @@
 mod errors;
+mod eval;
 mod lexer;
 mod parser;
 mod repl;
-mod virtual_machine;
 
 use repl::repl;
 
