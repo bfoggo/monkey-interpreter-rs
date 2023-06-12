@@ -269,6 +269,7 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, ParserError> {
 }
 
 pub enum AST {
+    Program(Program),
     Statement(Statement),
     Expression(Expression),
 }

@@ -1,5 +1,6 @@
+use crate::eval::eval;
 use crate::lexer::lex;
-use crate::parser::parse;
+use crate::parser::{parse, Statement, AST};
 use std::io::{self, Write};
 
 pub fn repl(prompt: &'static str) -> io::Result<()> {
@@ -12,5 +13,11 @@ pub fn repl(prompt: &'static str) -> io::Result<()> {
         println!("{:?}", tokens);
         let program = parse(tokens);
         println!("{:?}", program);
+        if program.is_err() {
+            println!("{}", program.err().unwrap());
+            continue;
+        }
+        let evaluation = eval(AST::Program(program.unwrap()));
+        println!("{:?}", evaluation);
     }
 }
