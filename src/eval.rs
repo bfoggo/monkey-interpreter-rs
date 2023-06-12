@@ -1,7 +1,7 @@
 use crate::lexer::Token;
 use crate::parser::{
     expressions::{Expression, LiteralExpression},
-    AST,
+    ExpressionStatement, Program, Statement, AST,
 };
 use std::fmt::Display;
 
@@ -69,6 +69,19 @@ impl Object for Null {
 
 pub fn eval(ast_node: AST) -> ObjectImpl {
     match ast_node {
+        AST::Program(Program { statements }) => {
+            let mut values = Vec::new();
+            for statement in statements {
+                values.push(eval(AST::Statement(statement)));
+            }
+            values.pop().unwrap()
+        }
+        AST::Statement(statement) => match statement {
+            Statement::Expression(ExpressionStatement { expression }) => {
+                eval(AST::Expression(expression))
+            }
+            _ => ObjectImpl::Null,
+        },
         AST::Expression(expr) => match expr {
             Expression::Literal(LiteralExpression { token }) => match token {
                 Token::NUMBER(value) => ObjectImpl::Integer(Integer {

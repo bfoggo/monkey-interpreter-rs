@@ -25,7 +25,7 @@ pub struct ReturnStatement {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct ExpressionStatement {
-    expression: Expression,
+    pub expression: Expression,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -53,7 +53,7 @@ pub enum Statement {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Program {
-    statements: Vec<Statement>,
+    pub statements: Vec<Statement>,
 }
 pub struct Parser {
     tokens: Peekable<IntoIter<Token>>,
