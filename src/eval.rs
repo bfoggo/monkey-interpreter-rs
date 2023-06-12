@@ -1,6 +1,6 @@
 use crate::lexer::Token;
 use crate::parser::{
-    expressions::{Expression, LiteralExpression},
+    expressions::{Expression, LiteralExpression, PrefixExpression},
     ExpressionStatement, Program, Statement, AST,
 };
 use std::fmt::Display;
@@ -91,6 +91,30 @@ pub fn eval(ast_node: AST) -> ObjectImpl {
                 Token::FALSE => ObjectImpl::Boolean(Boolean { value: false }),
                 _ => ObjectImpl::Null,
             },
+            Expression::Prefix(PrefixExpression { token, right }) => {
+                let right_object = eval(AST::Expression(right.unwrap()));
+                eval_prefix_expression(&token, right_object)
+            }
+            _ => ObjectImpl::Null,
+        },
+        _ => ObjectImpl::Null,
+    }
+}
+
+fn eval_prefix_expression(operator: &Token, right: ObjectImpl) -> ObjectImpl {
+    match operator {
+        Token::NOT => match right {
+            ObjectImpl::Boolean(boolean) => ObjectImpl::Boolean(Boolean {
+                value: !boolean.value,
+            }),
+            ObjectImpl::Integer(_) => ObjectImpl::Boolean(Boolean { value: false }),
+            _ => ObjectImpl::Null,
+        },
+        Token::MINUS => match right {
+            ObjectImpl::Integer(integer) => ObjectImpl::Integer(Integer {
+                value: -integer.value,
+            }),
+            ObjectImpl::Boolean(_) => ObjectImpl::Boolean(Boolean { value: false }),
             _ => ObjectImpl::Null,
         },
         _ => ObjectImpl::Null,
