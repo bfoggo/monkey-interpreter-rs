@@ -136,6 +136,8 @@ fn eval_infix_expression(left: ObjectImpl, operator: &Token, right: ObjectImpl) 
     match operator {
         Token::PLUS => add(left, right),
         Token::ASTERISK => multiply(left, right),
+        Token::MINUS => subtract(left, right),
+        Token::SLASH => divide(left, right),
         _ => ObjectImpl::Null(Null),
     }
 }
@@ -153,6 +155,24 @@ fn multiply(left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
     match (left, right) {
         (ObjectImpl::Integer(left), ObjectImpl::Integer(right)) => ObjectImpl::Integer(Integer {
             value: left.value * right.value,
+        }),
+        _ => ObjectImpl::Null(Null),
+    }
+}
+
+fn subtract(left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
+    match (left, right) {
+        (ObjectImpl::Integer(left), ObjectImpl::Integer(right)) => ObjectImpl::Integer(Integer {
+            value: left.value - right.value,
+        }),
+        _ => ObjectImpl::Null(Null),
+    }
+}
+
+fn divide(left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
+    match (left, right) {
+        (ObjectImpl::Integer(left), ObjectImpl::Integer(right)) => ObjectImpl::Integer(Integer {
+            value: left.value / right.value,
         }),
         _ => ObjectImpl::Null(Null),
     }
