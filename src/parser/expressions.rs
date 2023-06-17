@@ -108,6 +108,10 @@ impl Parsable for InfixParser {
         match token {
             Token::EQ => Some(2),
             Token::EQEQ => Some(2),
+            Token::GTEQ => Some(2),
+            Token::GT => Some(2),
+            Token::LTEQ => Some(2),
+            Token::LT => Some(2),
             Token::PLUS => Some(3),
             Token::MINUS => Some(3),
             Token::ASTERISK => Some(4),

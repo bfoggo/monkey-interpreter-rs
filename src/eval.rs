@@ -138,6 +138,11 @@ fn eval_infix_expression(left: ObjectImpl, operator: &Token, right: ObjectImpl) 
         Token::ASTERISK => multiply(left, right),
         Token::MINUS => subtract(left, right),
         Token::SLASH => divide(left, right),
+        Token::GT => gt(left, right),
+        Token::LT => lt(left, right),
+        Token::GTEQ => gt(left, right),
+        Token::LTEQ => lt(left, right),
+        Token::EQEQ => eqeq(left, right),
         _ => ObjectImpl::Null(Null),
     }
 }
@@ -173,6 +178,54 @@ fn divide(left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
     match (left, right) {
         (ObjectImpl::Integer(left), ObjectImpl::Integer(right)) => ObjectImpl::Integer(Integer {
             value: left.value / right.value,
+        }),
+        _ => ObjectImpl::Null(Null),
+    }
+}
+
+fn gt(left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
+    match (left, right) {
+        (ObjectImpl::Integer(left), ObjectImpl::Integer(right)) => ObjectImpl::Boolean(Boolean {
+            value: left.value > right.value,
+        }),
+        _ => ObjectImpl::Null(Null),
+    }
+}
+
+fn gte(left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
+    match (left, right) {
+        (ObjectImpl::Integer(left), ObjectImpl::Integer(right)) => ObjectImpl::Boolean(Boolean {
+            value: left.value >= right.value,
+        }),
+        _ => ObjectImpl::Null(Null),
+    }
+}
+
+fn lt(left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
+    match (left, right) {
+        (ObjectImpl::Integer(left), ObjectImpl::Integer(right)) => ObjectImpl::Boolean(Boolean {
+            value: left.value < right.value,
+        }),
+        _ => ObjectImpl::Null(Null),
+    }
+}
+
+fn lte(left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
+    match (left, right) {
+        (ObjectImpl::Integer(left), ObjectImpl::Integer(right)) => ObjectImpl::Boolean(Boolean {
+            value: left.value <= right.value,
+        }),
+        _ => ObjectImpl::Null(Null),
+    }
+}
+
+fn eqeq(left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
+    match (left, right) {
+        (ObjectImpl::Integer(left), ObjectImpl::Integer(right)) => ObjectImpl::Boolean(Boolean {
+            value: left.value == right.value,
+        }),
+        (ObjectImpl::Boolean(left), ObjectImpl::Boolean(right)) => ObjectImpl::Boolean(Boolean {
+            value: left.value == right.value,
         }),
         _ => ObjectImpl::Null(Null),
     }
