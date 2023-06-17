@@ -143,6 +143,7 @@ fn eval_infix_expression(left: ObjectImpl, operator: &Token, right: ObjectImpl) 
         Token::GTEQ => gt(left, right),
         Token::LTEQ => lt(left, right),
         Token::EQEQ => eqeq(left, right),
+        Token::NOTEQ => neq(left, right),
         _ => ObjectImpl::Null(Null),
     }
 }
@@ -226,6 +227,18 @@ fn eqeq(left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
         }),
         (ObjectImpl::Boolean(left), ObjectImpl::Boolean(right)) => ObjectImpl::Boolean(Boolean {
             value: left.value == right.value,
+        }),
+        _ => ObjectImpl::Null(Null),
+    }
+}
+
+fn neq(left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
+    match (left, right) {
+        (ObjectImpl::Integer(left), ObjectImpl::Integer(right)) => ObjectImpl::Boolean(Boolean {
+            value: left.value != right.value,
+        }),
+        (ObjectImpl::Boolean(left), ObjectImpl::Boolean(right)) => ObjectImpl::Boolean(Boolean {
+            value: left.value != right.value,
         }),
         _ => ObjectImpl::Null(Null),
     }
