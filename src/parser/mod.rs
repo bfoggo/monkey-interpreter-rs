@@ -30,9 +30,9 @@ pub struct ExpressionStatement {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct IfStatement {
-    condition: Expression,
-    consequence: Expression,
-    alternative: Option<Expression>,
+    pub condition: Expression,
+    pub consequence: Expression,
+    pub alternative: Expression,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -156,18 +156,18 @@ impl Parser {
         if consequence.is_none() {
             return Err(IfStatementError::NoConsequence);
         }
-        let mut alternative = None;
-        if matches!(self.tokens.peek(), Some(Token::ELSE)) {
-            self.advance();
-            alternative = self.parse_expression(0)?;
-            if alternative.is_none() {
-                return Err(IfStatementError::NoAlternative);
-            }
+        self.advance();
+        if !matches!(self.curr_token.clone().unwrap(), Token::ELSE) {
+            return Err(IfStatementError::NoElse);
+        }
+        let alternative = self.parse_expression(0)?;
+        if alternative.is_none() {
+            return Err(IfStatementError::NoAlternative);
         }
         Ok(IfStatement {
             condition: condition.unwrap(),
             consequence: consequence.unwrap(),
-            alternative,
+            alternative: alternative.unwrap(),
         })
     }
 

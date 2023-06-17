@@ -25,7 +25,9 @@ pub enum IfStatementError {
     NoCondition,
     #[error("If statements need a consequence")]
     NoConsequence,
-    #[error("If statements need an alternative if ELSE is used")]
+    #[error("If statements need an else")]
+    NoElse,
+    #[error("If statements need an alternative")]
     NoAlternative,
     #[error("Invalid Expression: {0}")]
     InvalidExpression(ExpressionError),

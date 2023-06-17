@@ -1,4 +1,5 @@
 use crate::lexer::Token;
+use crate::parser::IfStatement;
 use crate::parser::{
     expressions::{Expression, InfixExpression, LiteralExpression, PrefixExpression},
     ExpressionStatement, Program, Statement, AST,
@@ -77,12 +78,10 @@ pub fn eval(ast_node: AST) -> ObjectImpl {
             }
             values.pop().unwrap()
         }
-        AST::Statement(statement) => match statement {
-            Statement::Expression(ExpressionStatement { expression }) => {
-                eval(AST::Expression(expression))
-            }
-            _ => ObjectImpl::Null(Null),
-        },
+        AST::Statement(Statement::Expression(ExpressionStatement { expression })) => {
+            eval(AST::Expression(expression))
+        }
+        AST::Statement(Statement::If(if_statement)) => eval_if_statement(if_statement),
         AST::Expression(expr) => match expr {
             Expression::Literal(LiteralExpression { token }) => match token {
                 Token::NUMBER(value) => ObjectImpl::Integer(Integer {
@@ -240,6 +239,20 @@ fn neq(left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
         (ObjectImpl::Boolean(left), ObjectImpl::Boolean(right)) => ObjectImpl::Boolean(Boolean {
             value: left.value != right.value,
         }),
+        _ => ObjectImpl::Null(Null),
+    }
+}
+
+fn eval_if_statement(if_statement: IfStatement) -> ObjectImpl {
+    let condition_eval = eval(AST::Expression(if_statement.condition));
+    println!("{:?}", condition_eval);
+    match condition_eval {
+        ObjectImpl::Boolean(Boolean { value: true }) => {
+            eval(AST::Expression(if_statement.consequence))
+        }
+        ObjectImpl::Boolean(Boolean { value: false }) => {
+            eval(AST::Expression(if_statement.alternative))
+        }
         _ => ObjectImpl::Null(Null),
     }
 }
