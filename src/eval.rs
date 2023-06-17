@@ -1,6 +1,6 @@
 use crate::lexer::Token;
 use crate::parser::{
-    expressions::{Expression, LiteralExpression, PrefixExpression},
+    expressions::{Expression, InfixExpression, LiteralExpression, PrefixExpression},
     ExpressionStatement, Program, Statement, AST,
 };
 use std::fmt::Display;
@@ -15,7 +15,7 @@ trait Object {
 pub enum ObjectImpl {
     Integer(Integer),
     Boolean(Boolean),
-    Null,
+    Null(Null),
 }
 
 impl Display for ObjectImpl {
@@ -23,7 +23,7 @@ impl Display for ObjectImpl {
         match self {
             ObjectImpl::Integer(integer) => write!(f, "{}", integer.inspect()),
             ObjectImpl::Boolean(boolean) => write!(f, "{}", boolean.inspect()),
-            ObjectImpl::Null => write!(f, "null"),
+            ObjectImpl::Null(_) => write!(f, "null"),
         }
     }
 }
@@ -56,6 +56,7 @@ impl Object for Boolean {
     }
 }
 
+#[derive(Clone, PartialEq, Debug)]
 struct Null;
 
 impl Object for Null {
@@ -80,7 +81,7 @@ pub fn eval(ast_node: AST) -> ObjectImpl {
             Statement::Expression(ExpressionStatement { expression }) => {
                 eval(AST::Expression(expression))
             }
-            _ => ObjectImpl::Null,
+            _ => ObjectImpl::Null(Null),
         },
         AST::Expression(expr) => match expr {
             Expression::Literal(LiteralExpression { token }) => match token {
@@ -89,15 +90,25 @@ pub fn eval(ast_node: AST) -> ObjectImpl {
                 }),
                 Token::TRUE => ObjectImpl::Boolean(Boolean { value: true }),
                 Token::FALSE => ObjectImpl::Boolean(Boolean { value: false }),
-                _ => ObjectImpl::Null,
+                _ => ObjectImpl::Null(Null),
             },
             Expression::Prefix(PrefixExpression { token, right }) => {
                 let right_object = eval(AST::Expression(right.unwrap()));
                 eval_prefix_expression(&token, right_object)
             }
-            _ => ObjectImpl::Null,
+            Expression::InfixExpression(InfixExpression { token, left, right }) => {
+                let left_obj = eval(AST::Expression(*left));
+                let mut right_obj: ObjectImpl;
+                if right.is_none() {
+                    right_obj = ObjectImpl::Null(Null);
+                } else {
+                    right_obj = eval(AST::Expression(right.unwrap()));
+                }
+                eval_infix_expression(left_obj, &token, right_obj)
+            }
+            _ => ObjectImpl::Null(Null),
         },
-        _ => ObjectImpl::Null,
+        _ => ObjectImpl::Null(Null),
     }
 }
 
@@ -108,15 +119,19 @@ fn eval_prefix_expression(operator: &Token, right: ObjectImpl) -> ObjectImpl {
                 value: !boolean.value,
             }),
             ObjectImpl::Integer(_) => ObjectImpl::Boolean(Boolean { value: false }),
-            _ => ObjectImpl::Null,
+            _ => ObjectImpl::Null(Null),
         },
         Token::MINUS => match right {
             ObjectImpl::Integer(integer) => ObjectImpl::Integer(Integer {
                 value: -integer.value,
             }),
             ObjectImpl::Boolean(_) => ObjectImpl::Boolean(Boolean { value: false }),
-            _ => ObjectImpl::Null,
+            _ => ObjectImpl::Null(Null),
         },
-        _ => ObjectImpl::Null,
+        _ => ObjectImpl::Null(Null),
     }
+}
+
+fn eval_infix_expression(left: ObjectImpl, operator: &Token, right: ObjectImpl) -> ObjectImpl {
+    ObjectImpl::Null(Null)
 }
