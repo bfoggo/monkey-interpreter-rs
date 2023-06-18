@@ -157,7 +157,7 @@ impl Parser {
             return Err(IfStatementError::NoThen);
         }
         let consequence = self.parse_expression(0)?;
-        if !matches!(consequence, Some(Expression::Grouped(_))) {
+        if !matches!(consequence, Some(_)) {
             return Err(IfStatementError::NoConsequence);
         }
         self.advance();
@@ -165,7 +165,7 @@ impl Parser {
             return Err(IfStatementError::NoElse);
         }
         let alternative = self.parse_expression(0)?;
-        if !matches!(alternative, Some(Expression::Grouped(_))) {
+        if !matches!(alternative, Some(_)) {
             return Err(IfStatementError::NoAlternative);
         }
         Ok(IfStatement {
