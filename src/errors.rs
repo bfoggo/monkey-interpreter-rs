@@ -23,6 +23,8 @@ pub enum LetStatementError {
 pub enum IfStatementError {
     #[error("If statements need a condition")]
     NoCondition,
+    #[error("If statements need a 'then' keyword")]
+    NoThen,
     #[error("If statements need a consequence")]
     NoConsequence,
     #[error("If statements need an else")]

@@ -152,6 +152,10 @@ impl Parser {
         if !matches!(condition, Some(Expression::Grouped(_))) {
             return Err(IfStatementError::NoCondition);
         }
+        self.advance();
+        if !matches!(self.curr_token.clone().unwrap(), Token::THEN) {
+            return Err(IfStatementError::NoThen);
+        }
         let consequence = self.parse_expression(0)?;
         if !matches!(consequence, Some(Expression::Grouped(_))) {
             return Err(IfStatementError::NoConsequence);
@@ -238,13 +242,6 @@ impl Parser {
             return Ok(None);
         }
         loop {
-            if matches!(
-                self.tokens.peek(),
-                Some(Token::SEMICOLON) | Some(Token::NEWLINE) | Some(Token::RPAREN) | None
-            ) {
-                self.advance();
-                return Ok(Some(left));
-            }
             let next_precedence: u8;
             let next_expr;
             if let Some(expr) = map_token_to_parsable_expression(&self.tokens.peek().unwrap()) {
@@ -253,7 +250,10 @@ impl Parser {
             } else {
                 return Ok(Some(left));
             }
-            if precedence >= next_precedence {
+            if precedence > next_precedence {
+                return Ok(Some(left));
+            } else if precedence == next_precedence {
+                self.advance();
                 return Ok(Some(left));
             } else {
                 self.advance();

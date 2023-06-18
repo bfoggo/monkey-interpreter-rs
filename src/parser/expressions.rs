@@ -1,6 +1,6 @@
 use crate::errors::ExpressionError;
 use crate::lexer::Token;
-use crate::parser::{Parser, ReturnStatementError, Statement};
+use crate::parser::{Parser, Statement};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
@@ -65,6 +65,7 @@ pub enum LeftParsableImpl {
 pub enum ParsableImpl {
     Infix(InfixParser),
     Call(CallParser),
+    Terminating(TerminatingParser),
 }
 
 pub struct LiteralParser;
@@ -132,10 +133,27 @@ impl Parsable for InfixParser {
     }
 }
 
+#[derive(Default)]
+pub struct TerminatingParser;
+impl Parsable for TerminatingParser {
+    fn precedence(token: &Token) -> Option<u8> {
+        match token {
+            Token::SEMICOLON => Some(0),
+            Token::RPAREN => Some(0),
+            _ => None,
+        }
+    }
+
+    fn parse(left: Expression, _parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        Ok(left)
+    }
+}
+
 pub struct BracketedParser;
 
 impl LeftParsable for BracketedParser {
     fn lparse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
+        parser.advance();
         let program = parser.parse();
         if program.is_err() {
             return Err(ExpressionError::InvalidExpression(format!(
@@ -193,6 +211,7 @@ impl ParsableImpl {
         match self {
             ParsableImpl::Infix(_) => InfixParser::precedence(token),
             ParsableImpl::Call(_) => CallParser::precedence(token),
+            ParsableImpl::Terminating(_) => TerminatingParser::precedence(token),
         }
     }
     pub fn parse(
@@ -203,6 +222,7 @@ impl ParsableImpl {
         match self {
             ParsableImpl::Infix(_) => InfixParser::parse(left, parser),
             ParsableImpl::Call(_) => CallParser::parse(left, parser),
+            ParsableImpl::Terminating(_) => TerminatingParser::parse(left, parser),
         }
     }
 }
@@ -223,6 +243,9 @@ pub fn map_token_to_parsable_expression(token: &Token) -> Option<ParsableImpl> {
     match token {
         _ if CallParser::precedence(token).is_some() => Some(ParsableImpl::Call(CallParser)),
         _ if InfixParser::precedence(token).is_some() => Some(ParsableImpl::Infix(InfixParser)),
+        _ if TerminatingParser::precedence(token).is_some() => {
+            Some(ParsableImpl::Terminating(TerminatingParser))
+        }
         _ => None,
     }
 }
