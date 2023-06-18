@@ -1,9 +1,9 @@
 use crate::lexer::Token;
-use crate::parser::IfStatement;
 use crate::parser::{
     expressions::{Expression, InfixExpression, LiteralExpression, PrefixExpression},
     ExpressionStatement, Program, Statement, AST,
 };
+use crate::parser::{BlockStatments, IfStatement};
 use std::fmt::Display;
 
 type ObjectType = &'static str;
@@ -80,6 +80,14 @@ pub fn eval(ast_node: AST) -> ObjectImpl {
         }
         AST::Statement(Statement::Expression(ExpressionStatement { expression })) => {
             eval(AST::Expression(expression))
+        }
+        AST::Statement(Statement::Block(BlockStatments { statements })) => {
+            let mut values: Vec<ObjectImpl> = Vec::new();
+            for statement in statements {
+                let blocked_obj = eval(AST::Statement(statement));
+                values.push(blocked_obj);
+            }
+            return values.pop().unwrap();
         }
         AST::Statement(Statement::If(if_statement)) => eval_if_statement(if_statement),
         AST::Expression(expr) => match expr {
