@@ -83,6 +83,8 @@ pub enum ParserError {
     ExpressionError(ExpressionError),
     #[error("If statement error: {0}")]
     IfStatementError(IfStatementError),
+    #[error("Expected a return statement")]
+    ExpectedReturnStatementError,
     #[error("Return statement error: {0}")]
     ReturnStatementError(ReturnStatementError),
     #[error("Fn statement error: {0}")]

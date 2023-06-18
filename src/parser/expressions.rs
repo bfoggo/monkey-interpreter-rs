@@ -1,6 +1,9 @@
-use crate::errors::ExpressionError;
+use crate::errors::{ExpressionError, ParserError};
 use crate::lexer::Token;
-use crate::parser::Parser;
+use crate::parser::{Parser, Statement};
+use std::fmt;
+
+use super::Program;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
@@ -38,6 +41,7 @@ pub struct InfixExpression {
 #[derive(Debug, PartialEq, Clone)]
 pub struct BracketedExpression {
     pub expressions: Vec<Expression>,
+    pub return_expression: Box<Expression>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -136,17 +140,20 @@ pub struct BracketedParser;
 
 impl LeftParsable for BracketedParser {
     fn lparse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
-        let mut expressions: Vec<Expression> = Vec::new();
-        loop {
-            let expression = parser.parse_expression(0)?;
-            if expression.is_none() {
-                break;
-            }
-            expressions.push(expression.unwrap());
+        let program = parser.parse();
+        if program.is_err() {
+            return Err(ExpressionError::InvalidExpression(format!(
+                "Couldn't parse bracketed statements - {}",
+                program.unwrap_err(),
+            )));
         }
-        Ok(Expression::BracketedExpression(BracketedExpression {
-            expressions,
-        }))
+        let final_statement = program.unwrap().statements.last().unwrap().clone();
+        match final_statement {
+            Statement::Return(rstatement) => Ok(rstatement.value),
+            _ => Err(ExpressionError::InvalidExpression(String::from(
+                "Bracketed expression needs a return statement",
+            ))),
+        }
     }
 }
 
