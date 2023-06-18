@@ -62,6 +62,7 @@ mod tagged_token {
 
         // keywords
         IF,
+        THEN,
         ELSE,
         WHILE,
         FOR,
@@ -150,6 +151,7 @@ mod tagged_token {
                         _ => {
                             let final_token = match curr_chars.as_str() {
                                 "if" => CompositeToken::IF,
+                                "then" => CompositeToken::THEN,
                                 "else" => CompositeToken::ELSE,
                                 "while" => CompositeToken::WHILE,
                                 "for" => CompositeToken::FOR,
@@ -231,6 +233,7 @@ pub enum Token {
     NUMBER(String),
     IDENT(String),
     IF,
+    THEN,
     ELSE,
     WHILE,
     FOR,
@@ -275,6 +278,7 @@ impl Display for Token {
             Token::NUMBER(number) => write!(f, "NUMBER({})", number),
             Token::IDENT(identifier) => write!(f, "IDENT({})", identifier),
             Token::IF => write!(f, "IF"),
+            Token::THEN => write!(f, "THEN"),
             Token::ELSE => write!(f, "ELSE"),
             Token::WHILE => write!(f, "WHILE"),
             Token::FOR => write!(f, "FOR"),
@@ -325,6 +329,7 @@ impl From<TaggedToken> for Token {
                 tagged_token::CompositeToken::LTEQ => Token::LTEQ,
                 tagged_token::CompositeToken::GTEQ => Token::GTEQ,
                 tagged_token::CompositeToken::IF => Token::IF,
+                tagged_token::CompositeToken::THEN => Token::THEN,
                 tagged_token::CompositeToken::ELSE => Token::ELSE,
                 tagged_token::CompositeToken::WHILE => Token::WHILE,
                 tagged_token::CompositeToken::FOR => Token::FOR,
