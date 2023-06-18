@@ -107,9 +107,12 @@ pub fn eval(ast_node: AST) -> ObjectImpl {
             let mut values: Vec<ObjectImpl> = Vec::new();
             for statement in statements {
                 let blocked_obj = eval(AST::Statement(statement));
+                if matches!(blocked_obj, ObjectImpl::Return(_)) {
+                    return blocked_obj;
+                }
                 values.push(blocked_obj);
             }
-            return values.pop().unwrap();
+            return ObjectImpl::Null(Null);
         }
         AST::Statement(Statement::If(if_statement)) => eval_if_statement(if_statement),
         AST::Expression(expr) => match expr {
