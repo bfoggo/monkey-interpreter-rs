@@ -16,6 +16,7 @@ trait Object {
 pub enum ObjectImpl {
     Integer(Integer),
     Boolean(Boolean),
+    Return(ReturnedObj),
     Null(Null),
 }
 
@@ -24,6 +25,7 @@ impl Display for ObjectImpl {
         match self {
             ObjectImpl::Integer(integer) => write!(f, "{}", integer.inspect()),
             ObjectImpl::Boolean(boolean) => write!(f, "{}", boolean.inspect()),
+            ObjectImpl::Return(rval) => write!(f, "{}", rval.inspect()),
             ObjectImpl::Null(_) => write!(f, "null"),
         }
     }
@@ -69,6 +71,20 @@ impl Object for Null {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct ReturnedObj {
+    pub value: Box<ObjectImpl>,
+}
+
+impl Object for ReturnedObj {
+    fn object_type(&self) -> ObjectType {
+        "RETURN_VALUE"
+    }
+    fn inspect(&self) -> String {
+        format!("{}", self.value)
+    }
+}
+
 pub fn eval(ast_node: AST) -> ObjectImpl {
     match ast_node {
         AST::Program(Program { statements }) => {
@@ -80,6 +96,12 @@ pub fn eval(ast_node: AST) -> ObjectImpl {
         }
         AST::Statement(Statement::Expression(ExpressionStatement { expression })) => {
             eval(AST::Expression(expression))
+        }
+        AST::Statement(Statement::Return(return_statement)) => {
+            let return_value = eval(AST::Expression(return_statement.value));
+            ObjectImpl::Return(ReturnedObj {
+                value: Box::new(return_value),
+            })
         }
         AST::Statement(Statement::Block(BlockStatments { statements })) => {
             let mut values: Vec<ObjectImpl> = Vec::new();
