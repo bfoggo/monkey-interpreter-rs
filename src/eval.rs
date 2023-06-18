@@ -1,4 +1,5 @@
 use crate::lexer::Token;
+use crate::parser::expressions::BracketedExpression;
 use crate::parser::IfStatement;
 use crate::parser::{
     expressions::{Expression, InfixExpression, LiteralExpression, PrefixExpression},
@@ -58,7 +59,7 @@ impl Object for Boolean {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-struct Null;
+pub struct Null;
 
 impl Object for Null {
     fn object_type(&self) -> ObjectType {
@@ -91,13 +92,23 @@ pub fn eval(ast_node: AST) -> ObjectImpl {
                 Token::FALSE => ObjectImpl::Boolean(Boolean { value: false }),
                 _ => ObjectImpl::Null(Null),
             },
+            Expression::Grouped(grouped_expression) => {
+                let expr = *grouped_expression.expression;
+                match expr {
+                    Some(somexpr) => eval(AST::Expression(somexpr)),
+                    None => ObjectImpl::Null(Null),
+                }
+            }
+            Expression::BracketedExpression(bracketed_expression) => {
+                eval_bracketed_expression(bracketed_expression)
+            }
             Expression::Prefix(PrefixExpression { token, right }) => {
                 let right_object = eval(AST::Expression(right.unwrap()));
                 eval_prefix_expression(&token, right_object)
             }
             Expression::InfixExpression(InfixExpression { token, left, right }) => {
                 let left_obj = eval(AST::Expression(*left));
-                let mut right_obj: ObjectImpl;
+                let right_obj: ObjectImpl;
                 if right.is_none() {
                     right_obj = ObjectImpl::Null(Null);
                 } else {
@@ -255,4 +266,8 @@ fn eval_if_statement(if_statement: IfStatement) -> ObjectImpl {
         }
         _ => ObjectImpl::Null(Null),
     }
+}
+
+fn eval_bracketed_expression(bracketed_expression: BracketedExpression) -> ObjectImpl {
+    eval(AST::Expression(*bracketed_expression.return_expression))
 }
