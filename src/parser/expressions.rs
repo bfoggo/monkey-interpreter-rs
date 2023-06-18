@@ -8,7 +8,6 @@ pub enum Expression {
     Prefix(PrefixExpression),
     Grouped(GroupedExpression),
     InfixExpression(InfixExpression),
-    BracketedExpression(BracketedExpression),
     CallExpression(CallExpression),
 }
 
@@ -36,11 +35,6 @@ pub struct InfixExpression {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct BracketedExpression {
-    pub return_expression: Box<Expression>,
-}
-
-#[derive(Debug, PartialEq, Clone)]
 pub struct CallExpression {
     pub function: Box<Expression>,
     pub arguments: Box<Option<Expression>>,
@@ -59,7 +53,6 @@ pub enum LeftParsableImpl {
     Literal(LiteralParser),
     Prefix(PrefixParser),
     Grouped(GroupedParser),
-    Bracketed(BracketedParser),
 }
 
 pub enum ParsableImpl {
@@ -149,32 +142,6 @@ impl Parsable for TerminatingParser {
     }
 }
 
-pub struct BracketedParser;
-
-impl LeftParsable for BracketedParser {
-    fn lparse(parser: &mut Parser) -> Result<Expression, ExpressionError> {
-        parser.advance();
-        let program = parser.parse();
-        if program.is_err() {
-            return Err(ExpressionError::InvalidExpression(format!(
-                "Couldn't parse bracketed statements - {}",
-                program.unwrap_err(),
-            )));
-        }
-        let final_statement = program.unwrap().statements.last().unwrap().clone();
-        match final_statement {
-            Statement::Return(rstatement) => {
-                Ok(Expression::BracketedExpression(BracketedExpression {
-                    return_expression: Box::new(rstatement.value),
-                }))
-            }
-            _ => Err(ExpressionError::InvalidExpression(String::from(
-                "Bracketed expression needs a return statement",
-            ))),
-        }
-    }
-}
-
 pub struct CallParser;
 
 impl Parsable for CallParser {
@@ -201,7 +168,6 @@ impl LeftParsableImpl {
             LeftParsableImpl::Literal(_) => LiteralParser::lparse(parser),
             LeftParsableImpl::Prefix(_) => PrefixParser::lparse(parser),
             LeftParsableImpl::Grouped(_) => GroupedParser::lparse(parser),
-            LeftParsableImpl::Bracketed(_) => BracketedParser::lparse(parser),
         }
     }
 }
@@ -234,7 +200,6 @@ pub fn map_token_to_left_parsable_expression(token: &Token) -> Option<LeftParsab
         }
         Token::NOT | Token::MINUS => Some(LeftParsableImpl::Prefix(PrefixParser)),
         Token::LPAREN => Some(LeftParsableImpl::Grouped(GroupedParser)),
-        Token::LBRACE => Some(LeftParsableImpl::Bracketed(BracketedParser)),
         _ => None,
     }
 }

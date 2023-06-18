@@ -1,5 +1,4 @@
 use crate::lexer::Token;
-use crate::parser::expressions::BracketedExpression;
 use crate::parser::IfStatement;
 use crate::parser::{
     expressions::{Expression, InfixExpression, LiteralExpression, PrefixExpression},
@@ -98,9 +97,6 @@ pub fn eval(ast_node: AST) -> ObjectImpl {
                     Some(somexpr) => eval(AST::Expression(somexpr)),
                     None => ObjectImpl::Null(Null),
                 }
-            }
-            Expression::BracketedExpression(bracketed_expression) => {
-                eval_bracketed_expression(bracketed_expression)
             }
             Expression::Prefix(PrefixExpression { token, right }) => {
                 let right_object = eval(AST::Expression(right.unwrap()));
@@ -266,8 +262,4 @@ fn eval_if_statement(if_statement: IfStatement) -> ObjectImpl {
         }
         _ => ObjectImpl::Null(Null),
     }
-}
-
-fn eval_bracketed_expression(bracketed_expression: BracketedExpression) -> ObjectImpl {
-    eval(AST::Expression(*bracketed_expression.return_expression))
 }
