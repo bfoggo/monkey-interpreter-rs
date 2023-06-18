@@ -20,7 +20,7 @@ pub struct LetStatement {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct ReturnStatement {
-    value: Expression,
+    pub value: Expression,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -149,11 +149,11 @@ impl Parser {
     fn parse_if_statement(&mut self) -> Result<IfStatement, IfStatementError> {
         self.advance();
         let condition = self.parse_expression(0)?;
-        if !matches!(condition, Some(Expression::BracketedExpression(_))) {
+        if !matches!(condition, Some(Expression::Grouped(_))) {
             return Err(IfStatementError::NoCondition);
         }
         let consequence = self.parse_expression(0)?;
-        if consequence.is_none() {
+        if !matches!(consequence, Some(Expression::Grouped(_))) {
             return Err(IfStatementError::NoConsequence);
         }
         self.advance();
@@ -161,7 +161,7 @@ impl Parser {
             return Err(IfStatementError::NoElse);
         }
         let alternative = self.parse_expression(0)?;
-        if alternative.is_none() {
+        if !matches!(alternative, Some(Expression::Grouped(_))) {
             return Err(IfStatementError::NoAlternative);
         }
         Ok(IfStatement {
