@@ -5,8 +5,8 @@ use expressions::{
 };
 
 use crate::errors::{
-    ExpressionError, FnStatementError, IfStatementError, LetStatementError, ParserError,
-    ReturnStatementError,
+    BlockStatementError, ExpressionError, FnStatementError, IfStatementError, LetStatementError,
+    ParserError, ReturnStatementError, StatementError,
 };
 use crate::lexer::Token;
 use std::iter::Peekable;
@@ -39,7 +39,12 @@ pub struct IfStatement {
 pub struct FnStatement {
     name: Token,
     parameters: Vec<Token>,
-    body: Expression,
+    body: BlockStatments,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct BlockStatments {
+    pub statements: Vec<Statement>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -49,6 +54,7 @@ pub enum Statement {
     Expression(ExpressionStatement),
     If(IfStatement),
     Fn(FnStatement),
+    Block(BlockStatments),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -76,41 +82,54 @@ impl Parser {
         let mut program = Program {
             statements: Vec::new(),
         };
-        while let Some(token) = self.tokens.peek() {
+        while let Some(token) = self.tokens.peek().cloned() {
             match token {
-                Token::LET => {
-                    let statement = self.parse_let_statement()?;
-                    program.statements.push(Statement::Let(statement));
-                }
-                Token::RETURN => {
-                    let statement = self.parse_return_statement()?;
-                    program.statements.push(Statement::Return(statement));
-                }
                 Token::NEWLINE | Token::SEMICOLON => {
                     self.tokens.next().unwrap();
-                }
-                Token::IF => {
-                    let statement = self.parse_if_statement()?;
-                    program.statements.push(Statement::If(statement));
-                }
-                Token::FN => {
-                    let statement = self.parse_fn_statement()?;
-                    program.statements.push(Statement::Fn(statement));
+                    self.advance();
                 }
                 _ => {
-                    let statement = self.parse_expression_statement()?;
-                    if statement.is_none() {
-                        continue;
-                    }
-                    program
-                        .statements
-                        .push(Statement::Expression(statement.unwrap()));
+                    let new_statment = self.parse_statement(&token)?;
+                    program.statements.push(new_statment);
                 }
             }
         }
         Ok(program)
     }
 
+    fn parse_statement(&mut self, token: &Token) -> Result<Statement, StatementError> {
+        match token {
+            Token::LET => {
+                let statement = self.parse_let_statement()?;
+                Ok(Statement::Let(statement))
+            }
+            Token::RETURN => {
+                let statement = self.parse_return_statement()?;
+                Ok(Statement::Return(statement))
+            }
+            Token::IF => {
+                let statement = self.parse_if_statement()?;
+                Ok(Statement::If(statement))
+            }
+            Token::FN => {
+                let statement = self.parse_fn_statement()?;
+                Ok(Statement::Fn(statement))
+            }
+            Token::RBRACE => {
+                let statements = self.parse_block_statements()?;
+                Ok(Statement::Block(statements))
+            }
+            _ => {
+                let statement = self.parse_expression_statement()?;
+                if statement.is_none() {
+                    return Err(StatementError::ExpressionError(
+                        ExpressionError::InvalidExpression("No expression".to_string()),
+                    ));
+                }
+                Ok(Statement::Expression(statement.unwrap()))
+            }
+        }
+    }
     fn parse_let_statement(&mut self) -> Result<LetStatement, LetStatementError> {
         self.advance();
         let next_token = self.tokens.peek().unwrap().clone();
@@ -206,14 +225,14 @@ impl Parser {
         if parameters.is_empty() {
             return Err(FnStatementError::NoParameters);
         }
-        let body = self.parse_expression(0)?;
-        if body.is_none() || !matches!(&body, Some(Expression::BracketedExpression(_))) {
+        if !matches!(self.tokens.peek(), Some(Token::LBRACE)) {
             return Err(FnStatementError::NoBody);
         }
+        let body = self.parse_block_statements()?;
         Ok(FnStatement {
             name,
             parameters,
-            body: body.unwrap(),
+            body,
         })
     }
 
@@ -227,6 +246,20 @@ impl Parser {
         Ok(Some(ExpressionStatement {
             expression: expression.unwrap(),
         }))
+    }
+
+    fn parse_block_statements(&mut self) -> Result<BlockStatments, BlockStatementError> {
+        let mut statements: Vec<Statement> = Vec::new();
+        self.advance();
+        loop {
+            if matches!(self.tokens.peek(), Some(Token::RBRACE)) {
+                self.advance();
+                break;
+            }
+            let statement = self.parse_statement(&self.curr_token.as_ref().unwrap().clone())?;
+            statements.push(statement);
+        }
+        Ok(BlockStatments { statements })
     }
 
     fn parse_expression(&mut self, precedence: u8) -> Result<Option<Expression>, ExpressionError> {

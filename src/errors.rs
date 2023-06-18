@@ -51,10 +51,50 @@ pub enum FnStatementError {
     NoParameters,
     #[error("Fn statements need a body")]
     NoBody,
+    #[error("Block statment error {0}")]
+    BlockStatementError(BlockStatementError),
     #[error("Syntax error: {0}")]
     SyntaxError(String),
     #[error("Invalid Expression: {0}")]
     InvalidExpression(ExpressionError),
+    #[error("statement error: {0}")]
+    StatementError(Box<StatementError>),
+}
+
+impl From<StatementError> for FnStatementError {
+    fn from(error: StatementError) -> Self {
+        FnStatementError::StatementError(Box::new(error))
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum BlockStatementError {
+    #[error("Block statements need a body")]
+    NoBody,
+    #[error("Syntax error: {0}")]
+    SyntaxError(String),
+    #[error("Invalid Expression: {0}")]
+    InvalidExpression(ExpressionError),
+    #[error("statement error: {0}")]
+    StatementError(StatementError),
+}
+
+impl From<StatementError> for BlockStatementError {
+    fn from(error: StatementError) -> Self {
+        BlockStatementError::StatementError(error)
+    }
+}
+
+impl From<ExpressionError> for BlockStatementError {
+    fn from(error: ExpressionError) -> Self {
+        BlockStatementError::InvalidExpression(error)
+    }
+}
+
+impl From<BlockStatementError> for FnStatementError {
+    fn from(error: BlockStatementError) -> Self {
+        FnStatementError::BlockStatementError(error)
+    }
 }
 
 impl From<ExpressionError> for FnStatementError {
@@ -78,7 +118,7 @@ impl From<ExpressionError> for LetStatementError {
 }
 
 #[derive(Debug, Error)]
-pub enum ParserError {
+pub enum StatementError {
     #[error("Let statement error: {0}")]
     LetStatementError(LetStatementError),
     #[error("Expression error: {0}")]
@@ -90,24 +130,26 @@ pub enum ParserError {
     #[error("Return statement error: {0}")]
     ReturnStatementError(ReturnStatementError),
     #[error("Fn statement error: {0}")]
-    FnStatementError(FnStatementError),
+    FunctionStatementError(Box<FnStatementError>),
+    #[error("Block statement error: {0}")]
+    BlockStatementError(Box<BlockStatementError>),
 }
 
-impl From<LetStatementError> for ParserError {
+impl From<LetStatementError> for StatementError {
     fn from(error: LetStatementError) -> Self {
-        ParserError::LetStatementError(error)
+        StatementError::LetStatementError(error)
     }
 }
 
-impl From<ExpressionError> for ParserError {
+impl From<ExpressionError> for StatementError {
     fn from(error: ExpressionError) -> Self {
-        ParserError::ExpressionError(error)
+        StatementError::ExpressionError(error)
     }
 }
 
-impl From<IfStatementError> for ParserError {
+impl From<IfStatementError> for StatementError {
     fn from(error: IfStatementError) -> Self {
-        ParserError::IfStatementError(error)
+        StatementError::IfStatementError(error)
     }
 }
 
@@ -117,14 +159,42 @@ impl From<ExpressionError> for IfStatementError {
     }
 }
 
-impl From<ReturnStatementError> for ParserError {
+impl From<ReturnStatementError> for StatementError {
     fn from(error: ReturnStatementError) -> Self {
-        ParserError::ReturnStatementError(error)
+        StatementError::ReturnStatementError(error)
     }
 }
 
-impl From<FnStatementError> for ParserError {
+impl From<FnStatementError> for StatementError {
     fn from(error: FnStatementError) -> Self {
-        ParserError::FnStatementError(error)
+        StatementError::FunctionStatementError(Box::new(error))
+    }
+}
+
+impl From<BlockStatementError> for StatementError {
+    fn from(error: BlockStatementError) -> Self {
+        StatementError::BlockStatementError(Box::new(error))
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum ParserError {
+    #[error("Syntax error: {0}")]
+    SyntaxError(String),
+    #[error("Statement error: {0}")]
+    StatementError(StatementError),
+    #[error("Expression error: {0}")]
+    ExpressionError(ExpressionError),
+}
+
+impl From<StatementError> for ParserError {
+    fn from(error: StatementError) -> Self {
+        ParserError::StatementError(error)
+    }
+}
+
+impl From<ExpressionError> for ParserError {
+    fn from(error: ExpressionError) -> Self {
+        ParserError::ExpressionError(error)
     }
 }
