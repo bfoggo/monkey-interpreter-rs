@@ -153,8 +153,8 @@ impl Object for Tuple {
 
 #[derive(Debug)]
 pub struct Environment {
-    store: HashMap<String, ObjectImpl>,
-    local_store: HashMap<String, ObjectImpl>,
+    pub store: HashMap<String, ObjectImpl>,
+    pub local_store: HashMap<String, ObjectImpl>,
 }
 
 impl Environment {
@@ -237,9 +237,7 @@ impl Environment {
                 Expression::CallExpression(call_expression) => {
                     self.eval_call_expression(call_expression)
                 }
-                _ => ObjectImpl::Null(Null),
             },
-            _ => ObjectImpl::Null(Null),
         }
     }
 
