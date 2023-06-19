@@ -389,6 +389,10 @@ impl Environment {
     }
 
     fn eval_fn_statment(&mut self, fn_statement: FnStatement) -> ObjectImpl {
+        let fn_name = match fn_statement.name {
+            Token::IDENT(identifier) => identifier,
+            _ => return ObjectImpl::Null(Null),
+        };
         let mut literal_expressions: Vec<LiteralExpression> = vec![];
         for token in fn_statement.parameters {
             match token {
@@ -398,6 +402,14 @@ impl Environment {
                 _ => return ObjectImpl::Null(Null),
             }
         }
+        self.store.insert(
+            fn_name.clone(),
+            ObjectImpl::Fn(FnObj {
+                parameters: literal_expressions.clone(),
+                body: fn_statement.body,
+            }),
+        );
+
         ObjectImpl::Fn(FnObj {
             parameters: literal_expressions,
             body: fn_statement.body,
