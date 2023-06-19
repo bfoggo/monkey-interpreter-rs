@@ -115,7 +115,7 @@ impl Parser {
                 let statement = self.parse_fn_statement()?;
                 Ok(Statement::Fn(statement))
             }
-            Token::RBRACE => {
+            Token::LBRACE => {
                 let statements = self.parse_block_statements()?;
                 Ok(Statement::Block(statements))
             }
@@ -252,11 +252,12 @@ impl Parser {
         let mut statements: Vec<Statement> = Vec::new();
         self.advance();
         loop {
-            if matches!(self.tokens.peek(), Some(Token::RBRACE)) {
+            let next_token = self.tokens.peek().cloned();
+            if matches!(next_token, Some(Token::RBRACE)) {
                 self.advance();
                 break;
             }
-            let statement = self.parse_statement(&self.curr_token.as_ref().unwrap().clone())?;
+            let statement = self.parse_statement(&next_token.unwrap())?;
             statements.push(statement);
         }
         Ok(BlockStatments { statements })
