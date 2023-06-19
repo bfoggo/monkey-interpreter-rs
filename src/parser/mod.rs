@@ -37,9 +37,9 @@ pub struct IfStatement {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FnStatement {
-    name: Token,
-    parameters: Vec<Token>,
-    body: BlockStatments,
+    pub name: Token,
+    pub parameters: Vec<Token>,
+    pub body: BlockStatments,
 }
 
 #[derive(Debug, PartialEq, Clone)]

@@ -3,7 +3,7 @@ use crate::parser::{
     expressions::{Expression, InfixExpression, LiteralExpression, PrefixExpression},
     ExpressionStatement, Program, Statement, AST,
 };
-use crate::parser::{BlockStatments, IfStatement, LetStatement};
+use crate::parser::{BlockStatments, FnStatement, IfStatement, LetStatement};
 use std::collections::HashMap;
 use std::fmt::Display;
 
@@ -86,6 +86,32 @@ impl Object for ReturnedObj {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct FnObj {
+    pub parameters: Vec<LiteralExpression>,
+    pub body: BlockStatments,
+}
+
+impl Object for FnObj {
+    fn object_type(&self) -> ObjectType {
+        "FUNCTION"
+    }
+    fn inspect(&self) -> String {
+        let mut params = Vec::new();
+        for param in &self.parameters {
+            params.push(param.clone());
+        }
+        format!(
+            "fn({})",
+            params
+                .into_iter()
+                .map(|p| p.literal().unwrap())
+                .collect::<Vec<String>>()
+                .join(", "),
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct Environment {
     store: HashMap<String, ObjectImpl>,
@@ -129,6 +155,9 @@ impl Environment {
             }
             AST::Statement(Statement::Let(let_statement)) => self.eval_let_statement(let_statement),
             AST::Statement(Statement::If(if_statement)) => self.eval_if_statement(if_statement),
+            AST::Statement(Statement::FnStatement(fn_statement)) => {
+                self.eval_fn_statement(fn_statement)
+            }
             AST::Expression(expr) => match expr {
                 Expression::Literal(LiteralExpression { token }) => match token {
                     Token::NUMBER(value) => ObjectImpl::Integer(Integer {
@@ -136,6 +165,10 @@ impl Environment {
                     }),
                     Token::TRUE => ObjectImpl::Boolean(Boolean { value: true }),
                     Token::FALSE => ObjectImpl::Boolean(Boolean { value: false }),
+                    Token::IDENT(ident) => match self.store.get(&ident) {
+                        Some(obj) => obj.clone(),
+                        None => ObjectImpl::Null(Null),
+                    },
                     _ => ObjectImpl::Null(Null),
                 },
                 Expression::Grouped(grouped_expression) => {
@@ -349,5 +382,12 @@ impl Environment {
         let value = self.eval(AST::Expression(let_statement.value));
         self.store.insert(key, value.clone());
         value
+    }
+
+    fn eval_fn_statment(&mut self, fn_statement: FnStatement) -> ObjectImpl {
+        return FnObj {
+            parameters: fn_statement.parameters,
+            body: fn_statement.body,
+        };
     }
 }
