@@ -204,9 +204,12 @@ impl Environment {
                     }),
                     Token::TRUE => ObjectImpl::Boolean(Boolean { value: true }),
                     Token::FALSE => ObjectImpl::Boolean(Boolean { value: false }),
-                    Token::IDENT(ident) => match self.store.get(&ident) {
+                    Token::IDENT(ident) => match self.local_store.get(&ident) {
                         Some(obj) => obj.clone(),
-                        None => ObjectImpl::Null(Null),
+                        None => match self.store.get(&ident) {
+                            Some(obj) => obj.clone(),
+                            None => ObjectImpl::Null(Null),
+                        },
                     },
                     _ => ObjectImpl::Null(Null),
                 },
@@ -494,16 +497,37 @@ impl Environment {
         };
         let fn_obj;
         match self.store.get(&fn_name.unwrap()) {
-            Some(ObjectImpl::Fn(f)) => fn_obj = f,
+            Some(ObjectImpl::Fn(f)) => fn_obj = f.clone(),
             _ => return ObjectImpl::Null(Null),
         }
         self.local_store.clear();
-        let param_names = fn_obj.parameters.clone();
+        let param_names = fn_obj
+            .parameters
+            .clone()
+            .iter()
+            .map(|p| p.literal().unwrap())
+            .collect::<Vec<String>>();
         let param_expr = *call_expression.arguments.clone();
         if param_expr.is_none() {
             return ObjectImpl::Null(Null);
         }
-        let param_vals = self.eval(AST::Expression(param_expr.unwrap()));
-        return param_vals;
+        let param_vals_wrapped = self.eval(AST::Expression(param_expr.unwrap()));
+        let param_vals: Tuple;
+        match param_vals_wrapped {
+            ObjectImpl::Tuple(tuplexpr) => {
+                if tuplexpr.elements.len() != param_names.len() {
+                    return ObjectImpl::Null(Null);
+                }
+                param_vals = tuplexpr;
+            }
+            _ => return ObjectImpl::Null(Null),
+        }
+        for (i, param) in param_vals.elements.iter().enumerate() {
+            self.local_store
+                .insert(param_names[i].clone(), param.clone());
+        }
+        let body_evaluation = self.eval(AST::Statement(Statement::Block(fn_obj.body.clone())));
+        self.local_store.clear();
+        body_evaluation
     }
 }
