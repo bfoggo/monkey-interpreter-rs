@@ -1,4 +1,5 @@
 use crate::lexer::Token;
+use crate::parser::expressions::CallExpression;
 use crate::parser::{
     expressions::{Expression, InfixExpression, LiteralExpression, PrefixExpression},
     ExpressionStatement, Program, Statement, AST,
@@ -8,7 +9,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 type ObjectType = &'static str;
-trait Object {
+pub trait Object {
     fn object_type(&self) -> ObjectType;
     fn inspect(&self) -> String;
 }
@@ -17,6 +18,7 @@ trait Object {
 pub enum ObjectImpl {
     Integer(Integer),
     Boolean(Boolean),
+    Tuple(Tuple),
     Return(ReturnedObj),
     Fn(FnObj),
     Null(Null),
@@ -28,7 +30,22 @@ impl Display for ObjectImpl {
             ObjectImpl::Integer(integer) => write!(f, "{}", integer.inspect()),
             ObjectImpl::Boolean(boolean) => write!(f, "{}", boolean.inspect()),
             ObjectImpl::Return(rval) => write!(f, "{}", rval.inspect()),
+            ObjectImpl::Tuple(tuple) => write!(f, "{}", tuple.inspect()),
+            ObjectImpl::Fn(func) => write!(f, "{}", func.inspect()),
             ObjectImpl::Null(_) => write!(f, "null"),
+        }
+    }
+}
+
+impl ObjectImpl {
+    fn inspect(&self) -> String {
+        match self {
+            ObjectImpl::Integer(integer) => integer.inspect(),
+            ObjectImpl::Boolean(boolean) => boolean.inspect(),
+            ObjectImpl::Return(rval) => rval.inspect(),
+            ObjectImpl::Tuple(tuple) => tuple.inspect(),
+            ObjectImpl::Fn(func) => func.inspect(),
+            ObjectImpl::Null(_) => "null".to_string(),
         }
     }
 }
@@ -113,15 +130,38 @@ impl Object for FnObj {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct Tuple {
+    pub elements: Vec<ObjectImpl>,
+}
+
+impl Object for Tuple {
+    fn object_type(&self) -> ObjectType {
+        "TUPLE"
+    }
+    fn inspect(&self) -> String {
+        format!(
+            "({})",
+            self.elements
+                .iter()
+                .map(|e| e.inspect())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct Environment {
     store: HashMap<String, ObjectImpl>,
+    local_store: HashMap<String, ObjectImpl>,
 }
 
 impl Environment {
     pub fn new() -> Environment {
         Environment {
             store: HashMap::new(),
+            local_store: HashMap::new(),
         }
     }
 
@@ -156,9 +196,7 @@ impl Environment {
             }
             AST::Statement(Statement::Let(let_statement)) => self.eval_let_statement(let_statement),
             AST::Statement(Statement::If(if_statement)) => self.eval_if_statement(if_statement),
-            AST::Statement(Statement::FnStatement(fn_statement)) => {
-                self.eval_fn_statement(fn_statement)
-            }
+            AST::Statement(Statement::Fn(fn_statement)) => self.eval_fn_statement(fn_statement),
             AST::Expression(expr) => match expr {
                 Expression::Literal(LiteralExpression { token }) => match token {
                     Token::NUMBER(value) => ObjectImpl::Integer(Integer {
@@ -239,6 +277,40 @@ impl Environment {
             Token::LTEQ => self.lte(left, right),
             Token::EQEQ => self.eqeq(left, right),
             Token::NOTEQ => self.neq(left, right),
+            Token::COMMA => self.comma(left, right),
+            _ => ObjectImpl::Null(Null),
+        }
+    }
+
+    fn comma(&self, left: ObjectImpl, right: ObjectImpl) -> ObjectImpl {
+        match (&left, &right) {
+            (
+                ObjectImpl::Integer(_) | ObjectImpl::Boolean(_),
+                ObjectImpl::Integer(_) | ObjectImpl::Boolean(_),
+            ) => ObjectImpl::Tuple(Tuple {
+                elements: vec![left, right],
+            }),
+            (ObjectImpl::Tuple(left_tuple), ObjectImpl::Integer(_) | ObjectImpl::Boolean(_)) => {
+                let mut tuple_ele_clone = left_tuple.elements.clone();
+                tuple_ele_clone.push(right.clone());
+                ObjectImpl::Tuple(Tuple {
+                    elements: tuple_ele_clone,
+                })
+            }
+            (ObjectImpl::Integer(_) | ObjectImpl::Boolean(_), ObjectImpl::Tuple(right_tuple)) => {
+                let mut tuple_ele_clone = right_tuple.elements.clone();
+                tuple_ele_clone.insert(0, left.clone());
+                ObjectImpl::Tuple(Tuple {
+                    elements: tuple_ele_clone,
+                })
+            }
+            (ObjectImpl::Tuple(left_tuple), ObjectImpl::Tuple(right_tuple)) => {
+                let mut tuple_ele_clone = left_tuple.elements.clone();
+                tuple_ele_clone.extend(right_tuple.elements.clone());
+                ObjectImpl::Tuple(Tuple {
+                    elements: tuple_ele_clone,
+                })
+            }
             _ => ObjectImpl::Null(Null),
         }
     }
@@ -365,7 +437,6 @@ impl Environment {
 
     fn eval_if_statement(&mut self, if_statement: IfStatement) -> ObjectImpl {
         let condition_eval = self.eval(AST::Expression(if_statement.condition));
-        println!("{:?}", condition_eval);
         match condition_eval {
             ObjectImpl::Boolean(Boolean { value: true }) => {
                 self.eval(AST::Expression(if_statement.consequence))
@@ -388,7 +459,7 @@ impl Environment {
         value
     }
 
-    fn eval_fn_statment(&mut self, fn_statement: FnStatement) -> ObjectImpl {
+    fn eval_fn_statement(&mut self, fn_statement: FnStatement) -> ObjectImpl {
         let fn_name = match fn_statement.name {
             Token::IDENT(identifier) => identifier,
             _ => return ObjectImpl::Null(Null),
@@ -406,13 +477,33 @@ impl Environment {
             fn_name.clone(),
             ObjectImpl::Fn(FnObj {
                 parameters: literal_expressions.clone(),
-                body: fn_statement.body,
+                body: fn_statement.body.clone(),
             }),
         );
 
         ObjectImpl::Fn(FnObj {
             parameters: literal_expressions,
-            body: fn_statement.body,
+            body: fn_statement.body.clone(),
         })
+    }
+
+    fn eval_call_expression(&mut self, call_expression: CallExpression) -> ObjectImpl {
+        let fn_name = match *call_expression.function {
+            Expression::Literal(litexpr) => litexpr.literal(),
+            _ => return ObjectImpl::Null(Null),
+        };
+        let fn_obj;
+        match self.store.get(&fn_name.unwrap()) {
+            Some(ObjectImpl::Fn(f)) => fn_obj = f,
+            _ => return ObjectImpl::Null(Null),
+        }
+        self.local_store.clear();
+        let param_names = fn_obj.parameters.clone();
+        let param_expr = *call_expression.arguments.clone();
+        if param_expr.is_none() {
+            return ObjectImpl::Null(Null);
+        }
+        let param_vals = self.eval(AST::Expression(param_expr.unwrap()));
+        return param_vals;
     }
 }
