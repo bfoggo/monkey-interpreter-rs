@@ -1,6 +1,6 @@
 use crate::errors::ExpressionError;
 use crate::lexer::Token;
-use crate::parser::{Parser, Statement};
+use crate::parser::Parser;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
@@ -14,6 +14,16 @@ pub enum Expression {
 #[derive(Debug, PartialEq, Clone)]
 pub struct LiteralExpression {
     pub token: Token,
+}
+
+impl LiteralExpression {
+    pub fn literal(&self) -> Option<String> {
+        match self.token {
+            Token::IDENT(s) => Some(s),
+            Token::NUMBER(s) => Some(s),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
