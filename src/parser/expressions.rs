@@ -225,3 +225,10 @@ pub fn map_token_to_parsable_expression(token: &Token) -> Option<ParsableImpl> {
         _ => None,
     }
 }
+
+pub fn is_consumable(token: &Token) -> bool {
+    match token {
+        Token::RPAREN => true,
+        _ => false,
+    }
+}

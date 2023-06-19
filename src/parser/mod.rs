@@ -1,7 +1,8 @@
 pub mod expressions;
 
 use expressions::{
-    map_token_to_left_parsable_expression, map_token_to_parsable_expression, Expression,
+    is_consumable, map_token_to_left_parsable_expression, map_token_to_parsable_expression,
+    Expression,
 };
 
 use crate::errors::{
@@ -284,7 +285,11 @@ impl Parser {
             } else {
                 return Ok(Some(left));
             }
-            if precedence > next_precedence {
+            if is_consumable(&self.tokens.peek().unwrap()) && (precedence == next_precedence) {
+                self.advance();
+                return Ok(Some(left));
+            }
+            if precedence >= next_precedence {
                 return Ok(Some(left));
             } else if precedence == next_precedence {
                 self.advance();
