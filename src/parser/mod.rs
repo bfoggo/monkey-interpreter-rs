@@ -14,8 +14,8 @@ use std::vec::IntoIter;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct LetStatement {
-    token: Token,
-    value: Expression,
+    pub token: Token,
+    pub value: Expression,
 }
 
 #[derive(Debug, PartialEq, Clone)]

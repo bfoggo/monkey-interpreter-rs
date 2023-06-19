@@ -1,9 +1,10 @@
-use crate::eval::eval;
+use crate::eval::Environment;
 use crate::lexer::lex;
-use crate::parser::{parse, Statement, AST};
+use crate::parser::{parse, AST};
 use std::io::{self, Write};
 
 pub fn repl(prompt: &'static str) -> io::Result<()> {
+    let mut environment = Environment::new();
     loop {
         io::stdout().write(prompt.as_bytes())?;
         io::stdout().flush()?;
@@ -17,7 +18,7 @@ pub fn repl(prompt: &'static str) -> io::Result<()> {
             println!("{}", program.err().unwrap());
             continue;
         }
-        let evaluation = eval(AST::Program(program.unwrap()));
+        let evaluation = environment.eval(AST::Program(program.unwrap()));
         println!("  : {}", evaluation);
     }
 }
