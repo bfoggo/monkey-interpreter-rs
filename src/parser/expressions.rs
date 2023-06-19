@@ -18,9 +18,9 @@ pub struct LiteralExpression {
 
 impl LiteralExpression {
     pub fn literal(&self) -> Option<String> {
-        match self.token {
-            Token::IDENT(s) => Some(s),
-            Token::NUMBER(s) => Some(s),
+        match &self.token {
+            Token::IDENT(s) => Some(s.to_string()),
+            Token::NUMBER(s) => Some(s.to_string()),
             _ => None,
         }
     }
@@ -110,6 +110,7 @@ pub struct InfixParser;
 impl Parsable for InfixParser {
     fn precedence(token: &Token) -> Option<u8> {
         match token {
+            Token::COMMA => Some(1),
             Token::EQ => Some(2),
             Token::EQEQ => Some(2),
             Token::NOTEQ => Some(2),
