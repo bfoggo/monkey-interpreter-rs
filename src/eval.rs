@@ -18,6 +18,7 @@ pub enum ObjectImpl {
     Integer(Integer),
     Boolean(Boolean),
     Return(ReturnedObj),
+    Fn(FnObj),
     Null(Null),
 }
 
@@ -191,6 +192,9 @@ impl Environment {
                         right_obj = self.eval(AST::Expression(right.unwrap()));
                     }
                     self.eval_infix_expression(left_obj, &token, right_obj)
+                }
+                Expression::CallExpression(call_expression) => {
+                    self.eval_call_expression(call_expression)
                 }
                 _ => ObjectImpl::Null(Null),
             },
@@ -385,9 +389,18 @@ impl Environment {
     }
 
     fn eval_fn_statment(&mut self, fn_statement: FnStatement) -> ObjectImpl {
-        return FnObj {
-            parameters: fn_statement.parameters,
+        let mut literal_expressions: Vec<LiteralExpression> = vec![];
+        for token in fn_statement.parameters {
+            match token {
+                Token::IDENT(identifier) => literal_expressions.push(LiteralExpression {
+                    token: Token::IDENT(identifier),
+                }),
+                _ => return ObjectImpl::Null(Null),
+            }
+        }
+        ObjectImpl::Fn(FnObj {
+            parameters: literal_expressions,
             body: fn_statement.body,
-        };
+        })
     }
 }
